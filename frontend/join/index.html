@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Puzmania — Join the competition</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect fill='%230e0d0b' width='32' height='32'/%3E%3Ctext x='7' y='23' font-family='Georgia' font-size='16' fill='%23d4a056'%3EP%3C/text%3E%3C/svg%3E" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/join/css/join.css" />
+  </head>
+  <body>
+    <header class="top">
+      <a class="brand" href="/join">Puzmania</a>
+      <nav>
+        <a href="#channel">Channel</a>
+        <a href="#play">Daily riddles</a>
+        <a href="#winners">Winners</a>
+      </nav>
+    </header>
+    <main>
+      <section class="hero">
+        <p class="kicker">Weekly competition</p>
+        <h1>Tap a Short. Join. See your name on the videos.</h1>
+        <p class="lede">A Short each day on YouTube and Instagram. Tap it to land on this channel — hundreds of puzzle videos to solve. Join with a username and age. The first time you tap a Short and land here, we catch you as a player.</p>
+        <p class="geo" id="from-short" hidden>You came from a PUZMANIA Short — join to keep your points.</p>
+        <p class="geo" id="geo-line" hidden></p>
+      </section>
+
+      <section class="card channel" id="channel">
+        <h2>The PUZMANIA channel</h2>
+        <p id="channel-copy">Join to watch the videos and tap one answer. A 100-point timer starts. Faster correct answers score more. A miss never takes points away.</p>
+        <p class="timer" id="channel-score">0 channel points</p>
+        <div class="filters" id="channel-filters"></div>
+        <div class="catalog" id="channel-list"></div>
+        <p class="err" id="channel-err" hidden></p>
+      </section>
+
+      <dialog class="player" id="player">
+        <form method="dialog"><button class="close" type="submit">Close</button></form>
+        <p class="timer" id="player-timer">100</p>
+        <video id="player-video" controls playsinline></video>
+        <p id="player-prompt"></p>
+        <div class="choices" id="player-choices"></div>
+        <p class="ok" id="player-ok" hidden></p>
+        <p class="err" id="player-err" hidden></p>
+      </dialog>
+
+      <section class="grid">
+        <article class="card" id="auth-card">
+          <div class="tabs">
+            <button type="button" class="is-on" data-auth="join">Join</button>
+            <button type="button" data-auth="login">Log in</button>
+          </div>
+          <form id="join-form">
+            <label>Username <input name="username" autocomplete="username" required minlength="3" maxlength="20" /></label>
+            <label>Age <input name="age" type="number" min="13" max="120" required /></label>
+            <label>Password <input name="password" type="password" autocomplete="new-password" required minlength="4" /></label>
+            <p class="hint">We only store username, age, and the country/region of this visit. No name, surname, or address. Members must be 13 or older — a parent can create the account. Tapping a Short and joining is how you earn winner points.</p>
+            <button class="go" type="submit">Become a member</button>
+          </form>
+          <form id="login-form" hidden>
+            <label>Username <input name="username" autocomplete="username" required /></label>
+            <label>Password <input name="password" type="password" autocomplete="current-password" required /></label>
+            <button class="go" type="submit">Log in</button>
+          </form>
+          <p class="err" id="auth-err" hidden></p>
+        </article>
+
+        <article class="card" id="play-card">
+          <h2 id="play">Today’s puzzles</h2>
+          <p id="play-copy">Log in to play. You have 90 seconds for three puzzles. One try per day.</p>
+          <p class="timer" id="timer" hidden>1:30</p>
+          <ol id="puzzle-list"></ol>
+          <button class="go" type="button" id="btn-start">Start today’s puzzles</button>
+          <button class="go" type="button" id="btn-submit" hidden>Submit answers</button>
+          <p class="err" id="play-err" hidden></p>
+          <p class="ok" id="play-ok" hidden></p>
+        </article>
+      </section>
+
+      <section class="card winners" id="winners">
+        <h2>This week’s winner</h2>
+        <p id="today-winner">No winner yet today.</p>
+        <ol id="winners-list"></ol>
+      </section>
+    </main>
+    <script src="/join/js/join.js"></script>
+  </body>
+</html>

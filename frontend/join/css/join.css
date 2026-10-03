@@ -1,0 +1,242 @@
+:root {
+  --bg: #0e0d0b;
+  --card: #1a1915;
+  --gold: #d4a056;
+  --text: #f3eee4;
+  --muted: #9a9488;
+  --sans: Manrope, "Segoe UI", sans-serif;
+  --serif: "Cormorant Garamond", Georgia, serif;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--sans);
+}
+
+body {
+  min-height: 100vh;
+}
+
+.top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 22px 8vw;
+  border-bottom: 1px solid rgba(243, 238, 228, 0.08);
+}
+
+.brand {
+  font-family: var(--serif);
+  font-size: 1.8rem;
+  color: var(--gold);
+  text-decoration: none;
+}
+
+nav a {
+  color: var(--muted);
+  margin-left: 18px;
+  text-decoration: none;
+}
+
+main {
+  padding: 36px 8vw 80px;
+  max-width: 1100px;
+}
+
+.kicker {
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--gold);
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+h1 {
+  font-family: var(--serif);
+  font-size: clamp(2.2rem, 5vw, 3.6rem);
+  line-height: 1.1;
+  margin: 10px 0 12px;
+}
+
+.lede, .hint, .geo {
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+  margin: 32px 0;
+}
+
+.card {
+  background: var(--card);
+  border: 1px solid rgba(243, 238, 228, 0.08);
+  border-radius: 16px;
+  padding: 22px;
+}
+
+label {
+  display: grid;
+  gap: 6px;
+  margin: 10px 0;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+input {
+  font: inherit;
+  color: var(--text);
+  background: #12110e;
+  border: 1px solid rgba(243, 238, 228, 0.16);
+  border-radius: 10px;
+  padding: 10px 12px;
+}
+
+.tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.tabs button {
+  background: transparent;
+  border: 0;
+  color: var(--muted);
+  padding: 8px 12px;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.tabs button.is-on {
+  background: rgba(212, 160, 86, 0.16);
+  color: var(--gold);
+}
+
+.go {
+  margin-top: 12px;
+  background: var(--gold);
+  color: #1a140c;
+  border: 0;
+  border-radius: 999px;
+  padding: 10px 16px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.err { color: #d4726a; }
+.ok { color: #7dba7a; }
+.timer {
+  font-family: var(--serif);
+  font-size: 2rem;
+  color: var(--gold);
+}
+
+#puzzle-list {
+  padding-left: 18px;
+}
+
+#puzzle-list li {
+  margin: 12px 0 18px;
+}
+
+#puzzle-list label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text);
+}
+
+.winners ol {
+  padding-left: 18px;
+}
+
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 12px 0 18px;
+}
+
+.filters button {
+  background: transparent;
+  border: 1px solid rgba(243, 238, 228, 0.16);
+  color: var(--muted);
+  border-radius: 999px;
+  padding: 6px 12px;
+  cursor: pointer;
+}
+
+.filters button.is-on {
+  background: rgba(212, 160, 86, 0.16);
+  color: var(--gold);
+  border-color: transparent;
+}
+
+.catalog {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 10px;
+}
+
+.clip {
+  display: grid;
+  gap: 6px;
+  text-align: left;
+  background: #12110e;
+  color: var(--text);
+  border: 1px solid rgba(243, 238, 228, 0.12);
+  border-radius: 12px;
+  padding: 12px;
+  cursor: pointer;
+}
+
+.clip span { color: var(--muted); font-size: 0.8rem; }
+.clip.is-done { opacity: 0.7; }
+
+.player {
+  width: min(640px, 94vw);
+  border: 0;
+  border-radius: 16px;
+  background: var(--card);
+  color: var(--text);
+  padding: 18px;
+}
+
+.player::backdrop { background: rgba(8, 7, 5, 0.72); }
+.player video { width: 100%; border-radius: 10px; background: #000; }
+.player .close {
+  float: right;
+  background: transparent;
+  border: 0;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.choices {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.choices button {
+  background: #12110e;
+  color: var(--text);
+  border: 1px solid rgba(243, 238, 228, 0.16);
+  border-radius: 10px;
+  padding: 10px 12px;
+  cursor: pointer;
+  text-align: left;
+}
+
+.choices button:disabled { opacity: 0.55; cursor: default; }
+
+@media (max-width: 860px) {
+  .grid { grid-template-columns: 1fr; }
+  .top, main { padding-left: 20px; padding-right: 20px; }
+}

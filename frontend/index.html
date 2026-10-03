@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Puzmania — Episode Publishing Desk</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect fill='%230e0d0b' width='32' height='32'/%3E%3Ctext x='7' y='23' font-family='Georgia' font-size='16' fill='%23d4a056'%3EP%3C/text%3E%3C/svg%3E" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,500;1,600&family=IBM+Plex+Mono:wght@400;500&family=Manrope:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="css/styles.css?v=11" />
+  </head>
+  <body>
+    <div class="grain" aria-hidden="true"></div>
+
+    <aside class="rail">
+      <div class="brand">
+        <span class="brand-mark">P</span>
+        <div>
+          <p class="brand-name">Puzmania</p>
+          <p class="brand-sub">Publishing desk</p>
+        </div>
+      </div>
+
+      <nav class="nav" aria-label="Primary">
+        <button class="nav-item is-active" data-view="overview">
+          <span class="nav-ico" aria-hidden="true">⌘</span>
+          Overview
+        </button>
+        <button class="nav-item" data-view="add">
+          <span class="nav-ico" aria-hidden="true">＋</span>
+          Add
+        </button>
+        <button class="nav-item" data-view="queue">
+          <span class="nav-ico" aria-hidden="true">☰</span>
+          Queue
+          <span class="nav-count" id="nav-queue-count">4</span>
+        </button>
+        <button class="nav-item" data-view="library">
+          <span class="nav-ico" aria-hidden="true">▣</span>
+          Library
+        </button>
+        <button class="nav-item" data-view="winners">
+          <span class="nav-ico" aria-hidden="true">★</span>
+          Winners
+        </button>
+        <button class="nav-item" data-view="history">
+          <span class="nav-ico" aria-hidden="true">≡</span>
+          History
+        </button>
+        <button class="nav-item" data-view="platforms">
+          <span class="nav-ico" aria-hidden="true">◎</span>
+          Platforms
+        </button>
+        <button class="nav-item" data-view="settings">
+          <span class="nav-ico" aria-hidden="true">⚙</span>
+          Settings
+        </button>
+      </nav>
+
+      <div class="rail-foot">
+        <p class="kicker">Next scheduled run</p>
+        <p class="next-run" id="next-run-label">15 Aug · 09:00</p>
+        <p class="countdown" id="countdown">—</p>
+      </div>
+    </aside>
+
+    <div class="workspace">
+      <header class="topbar">
+        <div>
+          <p class="kicker" id="view-kicker">Operations</p>
+          <h1 class="page-title" id="page-title">Overview</h1>
+        </div>
+        <div class="topbar-actions">
+          <div class="clock-block">
+            <span class="clock" id="live-clock">—</span>
+            <span class="clock-sub" id="live-date">—</span>
+          </div>
+          <span class="badge badge-dry" id="dry-badge">Dry run</span>
+          <button class="btn btn-primary" type="button" data-view="add">ADD</button>
+          <button class="btn btn-ghost" type="button" id="btn-preview-run">Preview today’s run</button>
+        </div>
+      </header>
+
+      <div class="notice" role="status">
+        <span class="notice-dot"></span>
+        <p>
+          APIs are not connected yet. This desk is static until the server is running.
+          Use ADD to queue videos, then the daily job posts them automatically.
+        </p>
+      </div>
+
+      <main class="stage">
+        <section class="view is-active" id="view-overview" data-title="Overview" data-kicker="Operations">
+          <div class="hero">
+            <div class="hero-copy">
+              <p class="kicker">Next up</p>
+              <p class="hero-id" id="hero-id">EP009</p>
+              <h2 class="hero-title" id="hero-title">Letters from a Closed Station</h2>
+              <p class="hero-meta" id="hero-meta">Queued for 15 Aug 2026 · 09:00 · 11:26</p>
+              <p class="hero-desc" id="hero-desc"></p>
+              <div class="hero-actions">
+                <button class="btn btn-primary" type="button" data-action="open-next">Open episode</button>
+                <button class="btn btn-ghost" type="button" data-action="simulate-publish">Publish now</button>
+              </div>
+            </div>
+            <div class="hero-cover" id="hero-cover" aria-hidden="true">
+              <span class="cover-series">Field Notes</span>
+              <span class="cover-ep" id="hero-cover-ep">09</span>
+            </div>
+          </div>
+
+          <div class="stat-row" id="stat-row"></div>
+
+          <div class="split">
+            <article class="panel">
+              <div class="panel-head">
+                <h3>Today’s run</h3>
+                <span class="pill pill-warn" id="today-pill">Needs attention</span>
+              </div>
+              <ol class="run-list" id="today-run"></ol>
+            </article>
+            <article class="panel">
+              <div class="panel-head">
+                <h3>Coming up</h3>
+                <button class="linkish" type="button" data-view="queue">Full queue</button>
+              </div>
+              <div class="coming-list" id="coming-list"></div>
+            </article>
+          </div>
+        </section>
+
+        <section class="view" id="view-add" hidden data-title="Add videos" data-kicker="Upload">
+          <p class="lede wide">Select the videos and an optional text file. Choose where they go, the dates, and how many to post each day. They join the queue and publish automatically.</p>
+          <form class="add-form" id="add-form">
+            <article class="panel add-drop-panel">
+              <h3>Files</h3>
+              <label class="drop-zone" id="add-drop">
+                <input type="file" id="add-videos" accept="video/mp4,video/quicktime,video/webm,.mp4,.mov,.m4v,.webm" multiple />
+                <strong>ADD videos</strong>
+                <span>Click or drop several videos here</span>
+              </label>
+              <ul class="file-list" id="add-video-list"></ul>
+              <label class="file-pick">
+                Text file (titles / captions)
+                <input type="file" id="add-captions" accept=".txt,.csv,.md,text/plain,text/csv" />
+              </label>
+              <p class="hint" id="add-caption-name">Optional. CSV with title,description or one caption per video.</p>
+            </article>
+            <article class="panel">
+              <h3>Where to display</h3>
+              <p class="hint">Pick the platforms for this batch.</p>
+              <div class="radio-stack" role="radiogroup" aria-label="Platforms">
+                <label class="radio"><input type="radio" name="add-platforms" value="youtube" /> YouTube</label>
+                <label class="radio"><input type="radio" name="add-platforms" value="instagram" /> Instagram</label>
+                <label class="radio"><input type="radio" name="add-platforms" value="youtube_instagram" checked /> YouTube and Instagram</label>
+                <label class="radio"><input type="radio" name="add-platforms" value="all" /> YouTube, Instagram, and TikTok</label>
+              </div>
+            </article>
+            <article class="panel">
+              <h3>When</h3>
+              <div class="fields">
+                <label>
+                  Start date
+                  <input type="date" id="add-start" required />
+                </label>
+                <label>
+                  End date
+                  <input type="date" id="add-end" required />
+                </label>
+                <label>
+                  Videos per day
+                  <input type="number" id="add-per-day" min="1" max="12" value="1" required />
+                </label>
+                <label>
+                  Batch name
+                  <input type="text" id="add-name" placeholder="Optional — e.g. Alien week" />
+                </label>
+              </div>
+              <label class="check">
+                <input type="checkbox" id="add-loop" checked />
+                If there are not enough videos, start from the beginning again
+              </label>
+              <p class="add-preview" id="add-preview">Select videos to see the schedule.</p>
+            </article>
+            <div class="add-foot">
+              <button class="btn btn-primary" type="submit" id="add-submit">Add to the list</button>
+              <p class="hint" id="add-status"></p>
+            </div>
+          </form>
+          <div class="campaign-list" id="campaign-list"></div>
+        </section>
+
+        <section class="view" id="view-queue" hidden data-title="Queue" data-kicker="Publishing">
+          <div class="toolbar">
+            <p class="lede">One episode leaves this list each scheduled morning. Skip, reorder, or re-trigger without waiting for APIs.</p>
+            <div class="toolbar-actions">
+              <button class="btn btn-ghost" type="button" id="btn-reset-queue">Restore order</button>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table class="sheet">
+              <thead>
+                <tr>
+                  <th>Order</th>
+                  <th>Episode</th>
+                  <th>Scheduled</th>
+                  <th>YouTube</th>
+                  <th>TikTok</th>
+                  <th>Instagram</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="queue-body"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="view" id="view-library" hidden data-title="Library" data-kicker="Catalogue">
+          <div class="toolbar">
+            <label class="search">
+              <span class="sr-only">Search episodes</span>
+              <input type="search" id="library-search" placeholder="Search title, id, or tag…" />
+            </label>
+            <div class="seg" role="tablist" aria-label="Library filter">
+              <button class="seg-btn is-active" type="button" data-filter="all">All</button>
+              <button class="seg-btn" type="button" data-filter="published">Published</button>
+              <button class="seg-btn" type="button" data-filter="queued">Queued</button>
+              <button class="seg-btn" type="button" data-filter="attention">Attention</button>
+            </div>
+          </div>
+          <div class="library-grid" id="library-grid"></div>
+        </section>
+
+        <section class="view" id="view-winners" hidden data-title="Winners" data-kicker="Competition">
+          <div class="toolbar">
+            <p class="lede">Every third day the dummy winner clip plays first, with this week’s name written large on the video, then the puzzle video. Until real click-throughs exist, the desk uses a list of usernames and a random score. Later it uses members who tapped a Short and joined the site (clicks × multiplier).</p>
+            <a class="btn btn-primary" id="join-site-link" href="/join" target="_blank" rel="noopener">Open join site</a>
+          </div>
+          <div class="stat-row" id="winners-stats"></div>
+          <div class="split">
+            <article class="panel">
+              <div class="panel-head">
+                <h3>On the videos</h3>
+                <span class="pill pill-pending" id="next-intro-pill">Next intro —</span>
+              </div>
+              <ol class="winner-list" id="winner-list"></ol>
+            </article>
+            <article class="panel">
+              <div class="panel-head">
+                <h3>Click-through leaderboard</h3>
+              </div>
+              <p class="hint" id="leaderboard-hint">A visitor is caught the first time they tap a Short and land on the join site. After they sign up, those taps become points.</p>
+              <ol class="winner-list" id="leaderboard-list"></ol>
+              <form class="feature-form" id="feature-form">
+                <label>
+                  Use as next video winner
+                  <select id="feature-member">
+                    <option value="">Pick a real member…</option>
+                  </select>
+                </label>
+                <button class="btn btn-ghost" type="submit">Name on next intro</button>
+              </form>
+              <p class="hint" id="feature-status"></p>
+            </article>
+          </div>
+        </section>
+
+        <section class="view" id="view-history" hidden data-title="History" data-kicker="Audit">
+          <div class="toolbar">
+            <p class="lede">Every attempt is kept — success, failure, and system notes. This is sample history until the state store is live.</p>
+            <div class="seg">
+              <button class="seg-btn is-active" type="button" data-hist="all">All</button>
+              <button class="seg-btn" type="button" data-hist="youtube">YouTube</button>
+              <button class="seg-btn" type="button" data-hist="tiktok">TikTok</button>
+              <button class="seg-btn" type="button" data-hist="instagram">Instagram</button>
+            </div>
+          </div>
+          <ol class="timeline" id="timeline"></ol>
+        </section>
+
+        <section class="view" id="view-platforms" hidden data-title="Platforms" data-kicker="Integrations">
+          <p class="lede wide">Official APIs only. Connect credentials later — the modules are already isolated so each platform can go live on its own.</p>
+          <div class="platform-grid" id="platform-grid"></div>
+        </section>
+
+        <section class="view" id="view-settings" hidden data-title="Settings" data-kicker="Configuration">
+          <form class="settings" id="settings-form">
+            <article class="panel">
+              <h3>Schedule</h3>
+              <div class="fields">
+                <label>
+                  Daily publish time
+                  <input type="time" name="publishTime" />
+                </label>
+                <label>
+                  Timezone
+                  <input type="text" name="timezone" />
+                </label>
+                <label>
+                  Episodes per run
+                  <input type="number" name="episodesPerRun" min="1" max="5" />
+                </label>
+              </div>
+            </article>
+            <article class="panel">
+              <h3>Retry policy</h3>
+              <div class="fields">
+                <label>
+                  Attempts
+                  <input type="number" name="retryAttempts" min="1" max="8" />
+                </label>
+                <label>
+                  Backoff
+                  <select name="retryBackoff">
+                    <option value="exponential">Exponential</option>
+                    <option value="linear">Linear</option>
+                    <option value="fixed">Fixed delay</option>
+                  </select>
+                </label>
+              </div>
+            </article>
+            <article class="panel">
+              <h3>Notifications</h3>
+              <label class="check">
+                <input type="checkbox" name="notifyEmail" />
+                Daily summary by email
+              </label>
+              <label class="check">
+                <input type="checkbox" name="notifySlack" />
+                Slack / Discord webhook
+              </label>
+              <label class="check">
+                <input type="checkbox" name="alertOnFailure" />
+                Immediate alert on permanent failure
+              </label>
+            </article>
+            <article class="panel">
+              <h3>Weekly winner intro</h3>
+              <p class="hint">The clip in data/winner plays first every N days, with the winner’s name written large on the video.</p>
+              <div class="fields">
+                <label>
+                  Winner source
+                  <select name="winnerMode">
+                    <option value="seed">Random names from our list</option>
+                    <option value="clicks">Real members (clicks × multiplier)</option>
+                  </select>
+                </label>
+                <label>
+                  Points multiplier
+                  <input type="number" name="pointsMultiplier" min="1" max="100000" />
+                </label>
+                <label>
+                  Intro every (days)
+                  <input type="number" name="winnerIntroDays" min="1" max="30" />
+                </label>
+              </div>
+            </article>
+            <article class="panel">
+              <h3>Safety</h3>
+              <label class="check">
+                <input type="checkbox" name="dryRun" />
+                Dry run — do not call platform APIs
+              </label>
+              <p class="hint">Keep this on until credentials exist. Simulated publishes update local queue state only.</p>
+            </article>
+            <article class="panel">
+              <h3>Desktop icon</h3>
+              <p class="hint">Creates a Puzmania shortcut on this Windows desktop. Double-click it to start the desk and open this screen.</p>
+              <button class="btn btn-ghost" type="button" id="btn-desktop-shortcut">Create desktop icon</button>
+            </article>
+            <article class="panel">
+              <h3>Google Drive library</h3>
+              <p class="hint">For unattended posting, keep videos in Drive. Share the parent folder with the service account email, then set <code>GDRIVE_FOLDER_ID</code> and <code>GDRIVE_SERVICE_ACCOUNT_FILE</code> in <code>.env</code>. Sync runs on startup, every 15 minutes, and before the daily publish.</p>
+              <button class="btn btn-ghost" type="button" data-gdrive-sync>Sync from Drive</button>
+            </article>
+            <div class="settings-foot">
+              <button class="btn btn-primary" type="submit">Save settings</button>
+              <p class="hint" id="settings-saved" hidden>Saved in this browser.</p>
+            </div>
+          </form>
+        </section>
+      </main>
+    </div>
+
+    <div class="drawer" id="drawer" hidden>
+      <div class="drawer-backdrop" data-close-drawer></div>
+      <aside class="drawer-panel" role="dialog" aria-modal="true" aria-labelledby="drawer-title">
+        <button class="icon-close" type="button" data-close-drawer aria-label="Close">×</button>
+        <p class="kicker" id="drawer-id">EP009</p>
+        <h2 id="drawer-title">—</h2>
+        <div class="drawer-cover" id="drawer-cover"></div>
+        <dl class="meta-list" id="drawer-meta"></dl>
+        <div class="platform-rows" id="drawer-platforms"></div>
+        <div class="drawer-actions" id="drawer-actions"></div>
+      </aside>
+    </div>
+
+    <div class="publish-overlay" id="publish-overlay" hidden>
+      <div class="publish-card" role="dialog" aria-modal="true" aria-labelledby="publish-title">
+        <p class="kicker" id="publish-kicker">Publishing</p>
+        <h2 id="publish-title">—</h2>
+        <p class="publish-status" id="publish-status">Starting…</p>
+        <div class="publish-bar" aria-hidden="true">
+          <div class="publish-bar-fill" id="publish-bar-fill"></div>
+        </div>
+        <ol class="publish-steps" id="publish-steps"></ol>
+        <p class="publish-result" id="publish-result" hidden></p>
+        <div class="publish-actions">
+          <button class="btn btn-primary" type="button" id="publish-dismiss" hidden>Close</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="toasts" id="toasts" aria-live="polite"></div>
+
+    <script src="js/data.js?v=11"></script>
+    <script src="js/api.js?v=11"></script>
+    <script src="js/app.js?v=11"></script>
+  </body>
+</html>

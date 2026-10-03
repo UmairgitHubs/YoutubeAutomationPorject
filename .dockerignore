@@ -1,0 +1,16 @@
+.git
+.venv
+backend/.venv
+**/__pycache__
+**/*.pyc
+.env
+data
+*.mp4
+*.mov
+*.m4v
+*.webm
+episodes/_sources
+.pytest_cache
+**/.pytest_cache
+*.log
+cloudflared.exe
