@@ -74,6 +74,17 @@ h1 {
   margin: 32px 0;
 }
 
+.auth-top {
+  margin: 8px 0 28px;
+  max-width: 520px;
+}
+
+.channel,
+#play-card,
+.winners {
+  margin-top: 28px;
+}
+
 .card {
   background: var(--card);
   border: 1px solid rgba(243, 238, 228, 0.08);

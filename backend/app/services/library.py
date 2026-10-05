@@ -11,6 +11,7 @@ from app.config import Settings
 from app.database import safe_flush
 from app.models import Episode, PublishEvent
 from app.services import gdrive
+from app.services import queue as queue_service
 
 log = logging.getLogger("puzmania.library")
 
@@ -25,6 +26,7 @@ def refresh_library(db: Session, settings: Settings) -> tuple[list[str], list[st
         log.exception("Google Drive sync failed")
         drive = {"ok": False, "skipped": False, "error": str(exc)[:300]}
     found, removed = scan_episode_folder(db, settings)
+    queue_service.interleave_series(db)
     return found, removed, drive
 
 

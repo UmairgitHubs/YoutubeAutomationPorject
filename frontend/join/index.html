@@ -14,6 +14,7 @@
     <header class="top">
       <a class="brand" href="/join">Puzmania</a>
       <nav>
+        <a href="#auth-card">Join</a>
         <a href="#channel">Channel</a>
         <a href="#play">Daily riddles</a>
         <a href="#winners">Winners</a>
@@ -27,6 +28,26 @@
         <p class="geo" id="from-short" hidden>You came from a PUZMANIA Short — join to keep your points.</p>
         <p class="geo" id="geo-line" hidden></p>
       </section>
+
+      <article class="card auth-top" id="auth-card">
+        <div class="tabs">
+          <button type="button" class="is-on" data-auth="join">Join</button>
+          <button type="button" data-auth="login">Log in</button>
+        </div>
+        <form id="join-form">
+          <label>Username <input name="username" autocomplete="username" required minlength="3" maxlength="20" /></label>
+          <label>Age <input name="age" type="number" min="13" max="120" required /></label>
+          <label>Password <input name="password" type="password" autocomplete="new-password" required minlength="4" /></label>
+          <p class="hint">We only store username, age, and the country/region of this visit. No name, surname, or address. Members must be 13 or older — a parent can create the account. Tapping a Short and joining is how you earn winner points.</p>
+          <button class="go" type="submit">Become a member</button>
+        </form>
+        <form id="login-form" hidden>
+          <label>Username <input name="username" autocomplete="username" required /></label>
+          <label>Password <input name="password" type="password" autocomplete="current-password" required /></label>
+          <button class="go" type="submit">Log in</button>
+        </form>
+        <p class="err" id="auth-err" hidden></p>
+      </article>
 
       <section class="card channel" id="channel">
         <h2>The PUZMANIA channel</h2>
@@ -47,37 +68,15 @@
         <p class="err" id="player-err" hidden></p>
       </dialog>
 
-      <section class="grid">
-        <article class="card" id="auth-card">
-          <div class="tabs">
-            <button type="button" class="is-on" data-auth="join">Join</button>
-            <button type="button" data-auth="login">Log in</button>
-          </div>
-          <form id="join-form">
-            <label>Username <input name="username" autocomplete="username" required minlength="3" maxlength="20" /></label>
-            <label>Age <input name="age" type="number" min="13" max="120" required /></label>
-            <label>Password <input name="password" type="password" autocomplete="new-password" required minlength="4" /></label>
-            <p class="hint">We only store username, age, and the country/region of this visit. No name, surname, or address. Members must be 13 or older — a parent can create the account. Tapping a Short and joining is how you earn winner points.</p>
-            <button class="go" type="submit">Become a member</button>
-          </form>
-          <form id="login-form" hidden>
-            <label>Username <input name="username" autocomplete="username" required /></label>
-            <label>Password <input name="password" type="password" autocomplete="current-password" required /></label>
-            <button class="go" type="submit">Log in</button>
-          </form>
-          <p class="err" id="auth-err" hidden></p>
-        </article>
-
-        <article class="card" id="play-card">
-          <h2 id="play">Today’s puzzles</h2>
-          <p id="play-copy">Log in to play. You have 90 seconds for three puzzles. One try per day.</p>
-          <p class="timer" id="timer" hidden>1:30</p>
-          <ol id="puzzle-list"></ol>
-          <button class="go" type="button" id="btn-start">Start today’s puzzles</button>
-          <button class="go" type="button" id="btn-submit" hidden>Submit answers</button>
-          <p class="err" id="play-err" hidden></p>
-          <p class="ok" id="play-ok" hidden></p>
-        </article>
+      <section class="card" id="play-card">
+        <h2 id="play">Today’s puzzles</h2>
+        <p id="play-copy">Log in to play. You have 90 seconds for three puzzles. One try per day.</p>
+        <p class="timer" id="timer" hidden>1:30</p>
+        <ol id="puzzle-list"></ol>
+        <button class="go" type="button" id="btn-start">Start today’s puzzles</button>
+        <button class="go" type="button" id="btn-submit" hidden>Submit answers</button>
+        <p class="err" id="play-err" hidden></p>
+        <p class="ok" id="play-ok" hidden></p>
       </section>
 
       <section class="card winners" id="winners">

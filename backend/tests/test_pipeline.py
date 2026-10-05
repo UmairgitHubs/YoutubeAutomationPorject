@@ -356,3 +356,20 @@ def test_scan_removes_episodes_missing_from_disk(tmp_path):
     assert db.get(Episode, "KEEP_01") is not None
     assert db.get(Episode, "GONE_01") is None
     assert list(db.scalars(select(PublishEvent).where(PublishEvent.episode_id == "GONE_01"))) == []
+
+
+def test_queue_rotates_one_from_each_series():
+    db = _session()
+    for ep_id, order in [
+        ("ALIEN_01", 1),
+        ("ALIEN_02", 2),
+        ("BLUR_01", 3),
+        ("JIG_01", 4),
+        ("JIG_02", 5),
+        ("BLUR_02", 6),
+    ]:
+        _episode(db, ep_id, queue_order=order)
+    ids = queue_service.interleave_series(db)
+    assert ids == ["JIG_01", "ALIEN_01", "BLUR_01", "JIG_02", "ALIEN_02", "BLUR_02"]
+    due = queue_service.next_unpublished(db, limit=1, today=date(2026, 8, 20))
+    assert due[0].episode_id == "JIG_01"

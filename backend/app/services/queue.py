@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 
 from app.database import safe_flush
 from app.models import Campaign, Episode
+from app.services.series import SERIES_ROTATION, episode_number, series_of
 
 
 def listed(db: Session) -> list[Episode]:
@@ -60,12 +61,33 @@ def reorder(db: Session, episode_id: str, direction: int) -> list[str]:
 
 
 def reset_order(db: Session) -> list[str]:
+    return interleave_series(db)
+
+
+def interleave_series(db: Session) -> list[str]:
+    """Build the cue as JIG, ALIEN, BLUR, JIG, ALIEN, BLUR — never a run of the same folder."""
     queue = active_queue(db)
-    queue.sort(key=lambda ep: (ep.scheduled_date or ep.created_at, ep.episode_id))
-    for order, ep in enumerate(queue, start=1):
+    buckets: dict[str, list[Episode]] = {name: [] for name in SERIES_ROTATION}
+    other: list[Episode] = []
+    for ep in queue:
+        series = series_of(ep.episode_id)
+        if series in buckets:
+            buckets[series].append(ep)
+        else:
+            other.append(ep)
+    for series in buckets:
+        buckets[series].sort(key=lambda row: (episode_number(row.episode_id), row.episode_id))
+    other.sort(key=lambda row: row.episode_id)
+    ordered: list[Episode] = []
+    while any(buckets.values()):
+        for series in SERIES_ROTATION:
+            if buckets[series]:
+                ordered.append(buckets[series].pop(0))
+    ordered.extend(other)
+    for order, ep in enumerate(ordered, start=1):
         ep.queue_order = order
     _flush(db)
-    return [ep.episode_id for ep in queue]
+    return [ep.episode_id for ep in ordered]
 
 
 def _flush(db: Session) -> None:

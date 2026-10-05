@@ -59,6 +59,13 @@ class Settings(BaseSettings):
     gdrive_service_account_json: str = ""
     gdrive_delete_missing: bool = False
 
+    answer_cycle_jig: str = "ABCD"
+    answer_cycle_alien: str = "123"
+    answer_cycle_blur: str = "ABCD"
+    answer_offset_jig: int = 0
+    answer_offset_alien: int = 0
+    answer_offset_blur: int = 0
+
     smtp_host: str = ""
     smtp_port: int = 587
     smtp_user: str = ""

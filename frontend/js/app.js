@@ -527,7 +527,7 @@
         <span class="pill ${connected ? "pill-ok" : "pill-warn"}">${connected ? "Connected" : "Not configured"}</span>
         <h3>Google Drive</h3>
         <div class="api">Library source · episode folders</div>
-        <p>Drop packages like <code>ALIEN_06/video.mp4</code> + <code>metadata.json</code> in a Drive folder, share it with the service account, then set <code>GDRIVE_FOLDER_ID</code> in <code>.env</code>. The app copies files here and posts from disk. Instagram still cannot fetch a Drive share link.</p>
+        <p>Copy the OneDrive <code>Puz_shorts</code> folders (<code>alien_finals</code>, <code>blur_finals</code>, <code>jig_finals</code>) into a Google Drive folder. Share that folder with the service account email (Viewer). Set <code>GDRIVE_FOLDER_ID</code> and paste the JSON key into <code>GDRIVE_SERVICE_ACCOUNT_JSON</code> (Railway) or <code>GDRIVE_SERVICE_ACCOUNT_FILE</code> locally. Sync pulls each short into <code>ALIEN_01</code>, <code>BLUR_01</code>, <code>JIG_01</code> packages. The daily queue then rotates one series at a time.</p>
         <p class="hint">${connected ? `Folder …${g.folderHint || ""}.${extra}` : "Not set — local episodes\\ folder is used."}</p>
         <button class="btn btn-ghost" type="button" data-gdrive-sync ${connected ? "" : "disabled"}>${connected ? "Sync from Drive" : "Add credentials in .env"}</button>
       </article>`;

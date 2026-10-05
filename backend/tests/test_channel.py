@@ -150,6 +150,28 @@ def test_seed_puzzles_still_runs_when_channel_exists(tmp_path):
     assert all(row.episode_id is None for row in join_service.todays_puzzles(db, date(2026, 9, 10)))
 
 
+def test_answer_cycle_follows_video_labels():
+    jig = Settings(answer_cycle_jig="ABCD", answer_offset_jig=0)
+    assert channel_service._spec_for("JIG_01", jig)["answer"] == "A"
+    assert channel_service._spec_for("JIG_02", jig)["answer"] == "B"
+    assert channel_service._spec_for("JIG_04", jig)["answer"] == "D"
+    assert channel_service._spec_for("JIG_05", jig)["answer"] == "A"
+    assert channel_service._spec_for("JIG_01", jig)["choices"] == ["A", "B", "C", "D"]
+    shifted = Settings(answer_cycle_jig="ABCD", answer_offset_jig=2)
+    assert channel_service._spec_for("JIG_01", shifted)["answer"] == "C"
+    alien = Settings(answer_cycle_alien="123", answer_offset_alien=0)
+    assert channel_service._spec_for("ALIEN_01", alien)["answer"] == "1"
+    assert channel_service._spec_for("ALIEN_03", alien)["answer"] == "3"
+    assert channel_service._spec_for("ALIEN_04", alien)["answer"] == "1"
+
+
+def test_detect_offset_when_first_clip_is_not_a():
+    from app.services.series import detect_offset
+
+    assert detect_offset(list("ABCD"), [(1, "C"), (2, "D")]) == 2
+    assert detect_offset(list("123"), [(1, "2")]) == 1
+
+
 def test_channel_http_flow_one_try_and_score():
     from fastapi import FastAPI
     from fastapi.testclient import TestClient

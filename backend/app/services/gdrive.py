@@ -9,6 +9,7 @@ from pathlib import Path
 
 from app.config import Settings
 from app.models import AppSetting
+from app.services.series import SERIES_PREFIX, episode_number, series_from_folder
 
 log = logging.getLogger("puzmania.gdrive")
 
@@ -35,6 +36,10 @@ def status(settings: Settings, db=None) -> dict:
         "folderHint": folder[-8:] if folder else None,
         "lastSync": (last or {}).get("at"),
         "lastResult": (last or {}).get("summary"),
+        "hint": (
+            "Share Puz_shorts (alien_finals, blur_finals, jig_finals) or ALIEN_01-style packages "
+            "with the service account, then set GDRIVE_FOLDER_ID and GDRIVE_SERVICE_ACCOUNT_JSON."
+        ),
     }
 
 
@@ -76,6 +81,8 @@ def sync_episodes(settings: Settings, db=None) -> dict:
             else:
                 downloaded.append(label)
             log.info("Drive synced %s", label)
+        if package.get("write_meta"):
+            _write_episode_metadata(local_dir, package)
 
     removed: list[str] = []
     if settings.gdrive_delete_missing and packages:
@@ -137,22 +144,131 @@ def _drive_service(settings: Settings):
 def _credentials(settings: Settings):
     from google.oauth2.service_account import Credentials
 
-    raw = (settings.gdrive_service_account_json or "").strip()
-    if raw:
-        return Credentials.from_service_account_info(json.loads(raw), scopes=SCOPES)
+    info = parse_service_account_json(settings.gdrive_service_account_json)
+    if info:
+        _cache_service_account(settings, info)
+        return Credentials.from_service_account_info(info, scopes=SCOPES)
     path = settings.gdrive_credentials_path()
     if path is None:
-        raise ValueError("Google Drive service account file was not found.")
+        raise ValueError(
+            "Google Drive service account is missing. "
+            "Set GDRIVE_SERVICE_ACCOUNT_JSON (Railway) or GDRIVE_SERVICE_ACCOUNT_FILE."
+        )
     return Credentials.from_service_account_file(str(path), scopes=SCOPES)
 
 
+def parse_service_account_json(raw: str) -> dict | None:
+    text = (raw or "").strip().lstrip("\ufeff")
+    if not text:
+        return None
+    try:
+        data = json.loads(text)
+    except json.JSONDecodeError as exc:
+        raise ValueError("GDRIVE_SERVICE_ACCOUNT_JSON is not valid JSON.") from exc
+    if isinstance(data, str):
+        data = json.loads(data)
+    if not isinstance(data, dict) or not data.get("client_email") or not data.get("private_key"):
+        raise ValueError("GDRIVE_SERVICE_ACCOUNT_JSON must be a Google service-account key.")
+    return data
+
+
+def _cache_service_account(settings: Settings, info: dict) -> None:
+    dest = Path(settings.database_path).expanduser().resolve().parent / "gdrive-sa.json"
+    try:
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        dest.write_text(json.dumps(info), encoding="utf-8")
+    except OSError:
+        log.info("Could not cache Drive credentials at %s", dest)
+
+
 def _iter_packages(service, folder_id: str):
-    for item in _list_children(service, folder_id):
+    children = _list_children(service, folder_id)
+    series_dirs = _collect_series_dirs(service, children)
+    if series_dirs:
+        yield from _packages_from_series_dirs(service, series_dirs)
+        return
+    for item in children:
         name = item.get("name") or ""
         if item.get("mimeType") != FOLDER_MIME or not PACKAGE_NAME.match(name):
             continue
         files = [row for row in _list_children(service, item["id"]) if _wanted_file(row)]
         yield {"name": name, "files": files}
+
+
+def _collect_series_dirs(service, children: list[dict]) -> list[tuple[str, dict]]:
+    found: list[tuple[str, dict]] = []
+    nested: list[dict] = []
+    for item in children:
+        if item.get("mimeType") != FOLDER_MIME:
+            continue
+        name = item.get("name") or ""
+        series = series_from_folder(name)
+        if series:
+            found.append((series, item))
+        else:
+            nested.append(item)
+    if found:
+        return found
+    for folder in nested:
+        for child in _list_children(service, folder["id"]):
+            if child.get("mimeType") != FOLDER_MIME:
+                continue
+            series = series_from_folder(child.get("name") or "")
+            if series:
+                found.append((series, child))
+    return found
+
+
+def _packages_from_series_dirs(service, series_dirs: list[tuple[str, dict]]):
+    seen: set[str] = set()
+    for series, folder in series_dirs:
+        files = [row for row in _list_children(service, folder["id"]) if _wanted_file(row)]
+        videos = [row for row in files if Path(row.get("name") or "").suffix.lower() in {".mp4", ".mov", ".m4v", ".webm"}]
+        videos.sort(key=lambda row: episode_number(row.get("name") or ""))
+        for video in videos:
+            number = episode_number(video.get("name") or "")
+            episode_id = f"{series}_{number:02d}"
+            if episode_id in seen:
+                continue
+            seen.add(episode_id)
+            extras = []
+            for row in files:
+                if row["id"] == video["id"]:
+                    continue
+                name = (row.get("name") or "").lower()
+                suffix = Path(name).suffix
+                if name == "metadata.json" or suffix in {".jpg", ".jpeg", ".png"}:
+                    extras.append(row)
+            yield {
+                "name": episode_id,
+                "files": [video, *extras],
+                "write_meta": True,
+                "series": series,
+                "number": number,
+                "title": f"{SERIES_PREFIX.get(series, series)} {number:02d}",
+            }
+
+
+def _write_episode_metadata(folder: Path, package: dict) -> None:
+    meta_path = folder / "metadata.json"
+    if meta_path.is_file():
+        return
+    series = package.get("series") or ""
+    number = int(package.get("number") or 1)
+    video_name = ""
+    for item in package.get("files") or []:
+        name = item.get("name") or ""
+        if Path(name).suffix.lower() in {".mp4", ".mov", ".m4v", ".webm"}:
+            video_name = name
+            break
+    payload = {
+        "id": package["name"],
+        "title": package.get("title") or package["name"],
+        "description": f"A Puzmania short from the {SERIES_PREFIX.get(series, series)} series. Episode {number:02d}.",
+        "tags": ["puzmania", "shorts", series.lower(), "puzzle"],
+        "filename": video_name,
+    }
+    meta_path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
 
 
 def _list_children(service, folder_id: str) -> list[dict]:

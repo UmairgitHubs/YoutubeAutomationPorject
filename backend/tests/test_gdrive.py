@@ -1,4 +1,5 @@
 from pathlib import Path
+import json
 
 from app.config import Settings
 from app.services import gdrive
@@ -65,3 +66,33 @@ def test_gdrive_status_unconfigured():
     info = gdrive.status(cfg)
     assert info["configured"] is False
     assert info["folderHint"] is None
+
+
+def test_parse_service_account_json():
+    blob = '{"type":"service_account","client_email":"bot@x.iam.gserviceaccount.com","private_key":"x"}'
+    info = gdrive.parse_service_account_json(blob)
+    assert info["client_email"] == "bot@x.iam.gserviceaccount.com"
+    quoted = json.dumps(blob)
+    assert gdrive.parse_service_account_json(quoted)["client_email"] == "bot@x.iam.gserviceaccount.com"
+    assert gdrive.parse_service_account_json("") is None
+
+
+def test_iter_packages_from_puz_shorts_folders(monkeypatch):
+    children = {
+        "root": [
+            {"id": "a", "name": "alien_finals", "mimeType": gdrive.FOLDER_MIME},
+            {"id": "b", "name": "blur_finals", "mimeType": gdrive.FOLDER_MIME},
+            {"id": "j", "name": "jig_finals", "mimeType": gdrive.FOLDER_MIME},
+        ],
+        "a": [{"id": "av", "name": "alien_01.mp4", "mimeType": "video/mp4", "size": "4"}],
+        "b": [{"id": "bv", "name": "blur_02.mp4", "mimeType": "video/mp4", "size": "4"}],
+        "j": [{"id": "jv", "name": "jig_01.mp4", "mimeType": "video/mp4", "size": "4"}],
+    }
+
+    def fake_list(_service, folder_id):
+        return children.get(folder_id, [])
+
+    monkeypatch.setattr(gdrive, "_list_children", fake_list)
+    packages = list(gdrive._iter_packages(object(), "root"))
+    assert [row["name"] for row in packages] == ["ALIEN_01", "BLUR_02", "JIG_01"]
+    assert all(row.get("write_meta") for row in packages)

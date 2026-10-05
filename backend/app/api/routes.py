@@ -142,7 +142,7 @@ def gdrive_sync(db: Session = Depends(get_db), cfg: Settings = Depends(get_setti
     if not cfg.gdrive_configured():
         raise HTTPException(
             400,
-            "Google Drive is not configured. Set GDRIVE_FOLDER_ID and GDRIVE_SERVICE_ACCOUNT_FILE in .env.",
+            "Google Drive is not configured. Set GDRIVE_FOLDER_ID and GDRIVE_SERVICE_ACCOUNT_JSON (or GDRIVE_SERVICE_ACCOUNT_FILE).",
         )
     found, removed, drive = library.refresh_library(db, cfg)
     return {"scanned": found, "removed": removed, "gdrive": drive}
