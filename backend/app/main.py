@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import threading
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -21,6 +22,19 @@ from app.services.library import refresh_library
 from app.services.scheduler import start_scheduler
 
 log = logging.getLogger("puzmania")
+
+
+def _refresh_in_background(settings) -> None:
+    """Download Drive videos without blocking the desk from opening."""
+    db = SessionLocal()
+    try:
+        refresh_library(db, settings)
+        db.commit()
+    except Exception:
+        db.rollback()
+        log.exception("Startup library sync failed")
+    finally:
+        db.close()
 
 
 def _configure_logging(log_dir: Path) -> None:
@@ -46,7 +60,6 @@ async def lifespan(_app: FastAPI):
         seed_if_empty(db)
         seed_puzzles(db)
         seed_channel_puzzles(db)
-        refresh_library(db, settings)
         db.commit()
     except Exception:
         db.rollback()
@@ -55,6 +68,12 @@ async def lifespan(_app: FastAPI):
     finally:
         db.close()
     start_scheduler(settings)
+    threading.Thread(
+        target=_refresh_in_background,
+        args=(settings,),
+        name="gdrive-initial-sync",
+        daemon=True,
+    ).start()
     log.info("Puzmania backend ready (dry_run=%s)", settings.dry_run)
     yield
 

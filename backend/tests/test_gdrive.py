@@ -33,6 +33,7 @@ def test_gdrive_downloads_new_package(tmp_path, monkeypatch):
     assert cfg.gdrive_configured()
 
     monkeypatch.setattr(gdrive, "_drive_service", lambda _settings: object())
+    monkeypatch.setattr(gdrive, "_require_folder", lambda *_args, **_kwargs: {"id": "folder123", "name": "episodes"})
     monkeypatch.setattr(
         gdrive,
         "_iter_packages",
@@ -61,11 +62,67 @@ def test_gdrive_downloads_new_package(tmp_path, monkeypatch):
     assert result2["updated"] == []
 
 
+def test_each_video_is_ready_before_the_next_download(tmp_path, monkeypatch):
+    sa = tmp_path / "sa.json"
+    sa.write_text("{}", encoding="utf-8")
+    dest = tmp_path / "episodes"
+    dest.mkdir()
+    cfg = Settings(
+        episodes_dir=dest,
+        gdrive_folder_id="folder123",
+        gdrive_service_account_file=str(sa),
+    )
+    monkeypatch.setattr(gdrive, "_drive_service", lambda _settings: object())
+    monkeypatch.setattr(gdrive, "_require_folder", lambda *_args, **_kwargs: {"id": "folder123", "name": "episodes"})
+    monkeypatch.setattr(
+        gdrive,
+        "_iter_packages",
+        lambda _service, _folder: [
+            {"name": "JIG_02", "files": [{"id": "v2", "name": "jig.mp4", "size": "1"}], "write_meta": True, "series": "JIG", "number": 2, "title": "Jig Puzzle 02"},
+            {"name": "ALIEN_01", "files": [{"id": "v1", "name": "alien.mp4", "size": "1"}], "write_meta": True, "series": "ALIEN", "number": 1, "title": "Alien Monkeys 01"},
+        ],
+    )
+    calls: list[str] = []
+
+    def fake_download(_service, file_id, path: Path) -> None:
+        calls.append(f"download:{file_id}")
+        path.write_bytes(b"v")
+
+    def on_ready(folder: Path) -> None:
+        calls.append(f"ready:{folder.name}")
+        assert any(path.suffix == ".mp4" and path.stat().st_size for path in folder.iterdir())
+
+    monkeypatch.setattr(gdrive, "_download_file", fake_download)
+    result = gdrive.sync_episodes(cfg, on_ready=on_ready)
+    assert result["ok"] is True
+    assert calls == ["download:v1", "ready:ALIEN_01", "download:v2", "ready:JIG_02"]
+
+
 def test_gdrive_status_unconfigured():
     cfg = Settings(gdrive_folder_id="", gdrive_service_account_file="")
     info = gdrive.status(cfg)
     assert info["configured"] is False
     assert info["folderHint"] is None
+    assert info["shareEmail"] is None
+
+
+def test_gdrive_status_includes_share_email(tmp_path):
+    sa = tmp_path / "sa.json"
+    sa.write_text(
+        json.dumps(
+            {
+                "type": "service_account",
+                "client_email": "bot@x.iam.gserviceaccount.com",
+                "private_key": "x",
+            }
+        ),
+        encoding="utf-8",
+    )
+    cfg = Settings(gdrive_folder_id="abc12345678", gdrive_service_account_file=str(sa))
+    info = gdrive.status(cfg)
+    assert info["configured"] is True
+    assert info["shareEmail"] == "bot@x.iam.gserviceaccount.com"
+    assert info["folderHint"] == "12345678"
 
 
 def test_parse_service_account_json():

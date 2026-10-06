@@ -4,12 +4,14 @@ import json
 import logging
 import re
 import shutil
+import threading
+from collections.abc import Callable
 from datetime import UTC, datetime
 from pathlib import Path
 
 from app.config import Settings
 from app.models import AppSetting
-from app.services.series import SERIES_PREFIX, episode_number, series_from_folder, series_of
+from app.services.series import SERIES_PREFIX, SERIES_ROTATION, episode_number, series_from_folder, series_of
 
 log = logging.getLogger("puzmania.gdrive")
 
@@ -19,6 +21,8 @@ KEEP_SUFFIXES = {".mp4", ".mov", ".m4v", ".webm", ".json", ".jpg", ".jpeg", ".pn
 PACKAGE_NAME = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$")
 FILE_NAME = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._ -]{0,200}$")
 LAST_SYNC_KEY = "gdrive_last_sync"
+_SYNC_LOCK = threading.Lock()
+_VIDEO_SUFFIXES = {".mp4", ".mov", ".m4v", ".webm"}
 
 
 def status(settings: Settings, db=None) -> dict:
@@ -31,37 +35,79 @@ def status(settings: Settings, db=None) -> dict:
             except json.JSONDecodeError:
                 last = None
     folder = settings.gdrive_folder_id.strip()
+    email = _service_account_email(settings)
     return {
         "configured": settings.gdrive_configured(),
         "folderHint": folder[-8:] if folder else None,
+        "shareEmail": email,
         "lastSync": (last or {}).get("at"),
         "lastResult": (last or {}).get("summary"),
+        "syncing": bool((last or {}).get("syncing")),
+        "progress": (last or {}).get("progress") if isinstance((last or {}).get("progress"), dict) else None,
         "hint": (
-            "Share Puz_shorts (alien_finals, blur_finals, jig_finals) or ALIEN_01-style packages "
-            "with the service account, then set GDRIVE_FOLDER_ID and GDRIVE_SERVICE_ACCOUNT_JSON."
+            f"Share the Drive folder with {email or 'the service account email'} as Viewer "
+            "(uncheck Notify), then set GDRIVE_FOLDER_ID. The JSON key alone cannot see the folder."
         ),
     }
 
 
-def sync_episodes(settings: Settings, db=None) -> dict:
-    """Download episode packages from Drive into settings.episodes_dir."""
+def sync_episodes(
+    settings: Settings,
+    db=None,
+    on_ready: Callable[[Path], None] | None = None,
+    on_progress: Callable[[], None] | None = None,
+) -> dict:
+    """Download episode packages from Drive into settings.episodes_dir.
+
+    on_ready runs after each package video is on disk, so the library can show
+    that episode before the rest of the folder finishes.
+    """
     if not settings.gdrive_configured():
         return {"ok": True, "skipped": True, "reason": "Google Drive is not configured."}
+    if not _SYNC_LOCK.acquire(blocking=False):
+        return {"ok": True, "skipped": True, "reason": "A Drive sync is already running."}
+    try:
+        return _sync_episodes(settings, db, on_ready, on_progress)
+    finally:
+        _SYNC_LOCK.release()
 
+
+def _sync_episodes(settings: Settings, db, on_ready: Callable[[Path], None] | None, on_progress: Callable[[], None] | None) -> dict:
     dest_root = Path(settings.episodes_dir)
     dest_root.mkdir(parents=True, exist_ok=True)
+    _note(
+        db,
+        on_progress,
+        ok=True,
+        syncing=True,
+        summary="Listing videos in the Drive folder…",
+        progress={"done": 0, "total": 0, "latest": ""},
+    )
 
     try:
         service = _drive_service(settings)
-        packages = list(_iter_packages(service, settings.gdrive_folder_id.strip()))
+        folder_id = settings.gdrive_folder_id.strip()
+        _require_folder(service, folder_id, _service_account_email(settings))
+        packages = list(_iter_packages(service, folder_id))
     except Exception as exc:
         log.exception("Google Drive listing failed")
-        result = {"ok": False, "skipped": False, "error": str(exc)[:300], "downloaded": [], "updated": []}
+        result = {
+            "ok": False,
+            "skipped": False,
+            "syncing": False,
+            "error": str(exc)[:400],
+            "downloaded": [],
+            "updated": [],
+        }
         _store_sync(db, result)
+        _checkpoint(on_progress)
         return result
 
+    packages.sort(key=_package_sort_key)
     downloaded: list[str] = []
     updated: list[str] = []
+    total = len(packages)
+    ready = 0
     for package in packages:
         local_dir = dest_root / package["name"]
         local_dir.mkdir(parents=True, exist_ok=True)
@@ -83,6 +129,26 @@ def sync_episodes(settings: Settings, db=None) -> dict:
             log.info("Drive synced %s", label)
         if package.get("write_meta"):
             _write_episode_metadata(local_dir, package)
+        if not _has_local_video(local_dir):
+            continue
+        ready += 1
+        _store_sync(
+            db,
+            {
+                "ok": True,
+                "syncing": True,
+                "summary": f"Downloaded {package['name']} ({ready}/{total}).",
+                "progress": {"done": ready, "total": total, "latest": package["name"]},
+            },
+        )
+        if on_ready is not None:
+            try:
+                on_ready(local_dir)
+            except Exception:
+                log.exception("Could not publish %s to the library yet", package["name"])
+                _checkpoint(on_progress)
+        else:
+            _checkpoint(on_progress)
 
     removed: list[str] = []
     if settings.gdrive_delete_missing and packages:
@@ -95,14 +161,47 @@ def sync_episodes(settings: Settings, db=None) -> dict:
     result = {
         "ok": True,
         "skipped": False,
+        "syncing": False,
         "packages": len(packages),
         "downloaded": downloaded,
         "updated": updated,
         "removed": removed,
         "summary": _summary(packages, downloaded, updated),
+        "progress": {"done": ready, "total": total, "latest": packages[-1]["name"] if packages else ""},
     }
     _store_sync(db, result)
+    _checkpoint(on_progress)
     return result
+
+
+def _package_sort_key(package: dict) -> tuple:
+    name = package.get("name") or ""
+    series = series_of(name) or ""
+    try:
+        rank = SERIES_ROTATION.index(series)
+    except ValueError:
+        rank = len(SERIES_ROTATION)
+    return (episode_number(name), rank, name)
+
+
+def _has_local_video(folder: Path) -> bool:
+    if not folder.is_dir():
+        return False
+    return any(path.is_file() and path.suffix.lower() in _VIDEO_SUFFIXES for path in folder.iterdir())
+
+
+def _note(db, on_progress: Callable[[], None] | None, **result) -> None:
+    _store_sync(db, result)
+    _checkpoint(on_progress)
+
+
+def _checkpoint(on_progress: Callable[[], None] | None) -> None:
+    if on_progress is None:
+        return
+    try:
+        on_progress()
+    except Exception:
+        log.exception("Could not save Drive sync progress")
 
 
 def _summary(packages: list[dict], downloaded: list[str], updated: list[str]) -> str:
@@ -126,6 +225,8 @@ def _store_sync(db, result: dict) -> None:
             "at": datetime.now(UTC).isoformat(),
             "summary": result.get("summary") or result.get("error") or result.get("reason"),
             "ok": result.get("ok"),
+            "syncing": bool(result.get("syncing")),
+            "progress": result.get("progress") if isinstance(result.get("progress"), dict) else None,
         }
     )
     row = db.get(AppSetting, LAST_SYNC_KEY)
@@ -133,6 +234,40 @@ def _store_sync(db, result: dict) -> None:
         row.value = payload
     else:
         db.add(AppSetting(key=LAST_SYNC_KEY, value=payload))
+
+
+def _service_account_email(settings: Settings) -> str | None:
+    info = parse_service_account_json(settings.gdrive_service_account_json)
+    if info and info.get("client_email"):
+        return str(info["client_email"])
+    path = settings.gdrive_credentials_path()
+    if path is None:
+        return None
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return None
+    email = data.get("client_email") if isinstance(data, dict) else None
+    return str(email) if email else None
+
+
+def _require_folder(service, folder_id: str, share_email: str | None) -> dict:
+    try:
+        return (
+            service.files()
+            .get(fileId=folder_id, fields="id, name, mimeType", supportsAllDrives=True)
+            .execute()
+        )
+    except Exception as exc:
+        text = str(exc)
+        if "404" in text or "notFound" in text:
+            who = share_email or "the service account email"
+            raise PermissionError(
+                f"Google Drive folder {folder_id} is not shared with {who}. "
+                "Open that folder in Drive → Share → add the email as Viewer and uncheck Notify. "
+                "Wait a few seconds, then sync again."
+            ) from exc
+        raise
 
 
 def _drive_service(settings: Settings):
@@ -202,7 +337,17 @@ def _iter_packages(service, folder_id: str):
                 break
     for item in packages:
         files = [row for row in _list_children(service, item["id"]) if _wanted_file(row)]
-        yield {"name": item["name"], "files": files}
+        name = item["name"]
+        series = series_of(name) or ""
+        number = episode_number(name)
+        yield {
+            "name": name,
+            "files": files,
+            "write_meta": True,
+            "series": series,
+            "number": number,
+            "title": f"{SERIES_PREFIX.get(series, series or name)} {number:02d}",
+        }
 
 
 def _episode_package_folders(children: list[dict]) -> list[dict]:
@@ -298,18 +443,16 @@ def _list_children(service, folder_id: str) -> list[dict]:
     token = None
     query = f"'{folder_id}' in parents and trashed = false"
     while True:
-        response = (
-            service.files()
-            .list(
-                q=query,
-                fields="nextPageToken, files(id, name, mimeType, size, modifiedTime)",
-                pageSize=1000,
-                pageToken=token,
-                supportsAllDrives=True,
-                includeItemsFromAllDrives=True,
-            )
-            .execute()
-        )
+        params = {
+            "q": query,
+            "fields": "nextPageToken, files(id, name, mimeType, size, modifiedTime)",
+            "pageSize": 1000,
+            "supportsAllDrives": True,
+            "includeItemsFromAllDrives": True,
+        }
+        if token:
+            params["pageToken"] = token
+        response = service.files().list(**params).execute()
         files.extend(response.get("files") or [])
         token = response.get("nextPageToken")
         if not token:

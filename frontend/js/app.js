@@ -22,6 +22,7 @@
     historyFilter: "all",
     search: "",
     useApi: false,
+    driveWatch: null,
   };
 
   const $ = (sel, root = document) => root.querySelector(sel);
@@ -341,6 +342,21 @@
       return [ep.id, ep.title, ep.tags.join(" "), ep.filename].join(" ").toLowerCase().includes(q);
     });
 
+    const syncNote = $("#library-sync");
+    if (syncNote) {
+      const drive = state.gdrive || {};
+      const prog = drive.progress || {};
+      if (drive.syncing) {
+        syncNote.hidden = false;
+        syncNote.textContent = prog.total
+          ? `Downloading ${prog.latest || "the next video"} (${prog.done || 0} of ${prog.total}). Each video appears here as soon as it finishes.`
+          : "Listing videos on Google Drive. Each one will show up here as soon as it finishes.";
+      } else {
+        syncNote.hidden = true;
+        syncNote.textContent = "";
+      }
+    }
+
     $("#library-grid").innerHTML = items
       .map((ep) => {
         const st = overallStatus(ep);
@@ -522,14 +538,21 @@
   function gdriveCard() {
     const g = state.gdrive || {};
     const connected = !!g.configured;
+    const syncing = !!g.syncing;
+    const prog = g.progress || {};
+    const live = syncing
+      ? (prog.total
+        ? ` Downloading ${prog.latest || "the next video"} (${prog.done || 0} of ${prog.total}).`
+        : " Listing the Drive folder…")
+      : "";
     const extra = g.lastResult ? ` Last sync: ${g.lastResult}` : "";
     return `<article class="plat-card">
-        <span class="pill ${connected ? "pill-ok" : "pill-warn"}">${connected ? "Connected" : "Not configured"}</span>
+        <span class="pill ${syncing ? "pill-pending" : connected ? "pill-ok" : "pill-warn"}">${syncing ? "Syncing" : connected ? "Connected" : "Not configured"}</span>
         <h3>Google Drive</h3>
         <div class="api">Library source · episode folders</div>
-        <p>Copy the OneDrive <code>Puz_shorts</code> folders (<code>alien_finals</code>, <code>blur_finals</code>, <code>jig_finals</code>) into a Google Drive folder. Share that folder with the service account email (Viewer). Set <code>GDRIVE_FOLDER_ID</code> and paste the JSON key into <code>GDRIVE_SERVICE_ACCOUNT_JSON</code> (Railway) or <code>GDRIVE_SERVICE_ACCOUNT_FILE</code> locally. Sync pulls each short into <code>ALIEN_01</code>, <code>BLUR_01</code>, <code>JIG_01</code> packages. The daily queue then rotates one series at a time.</p>
-        <p class="hint">${connected ? `Folder …${g.folderHint || ""}.${extra}` : "Not set — local episodes\\ folder is used."}</p>
-        <button class="btn btn-ghost" type="button" data-gdrive-sync ${connected ? "" : "disabled"}>${connected ? "Sync from Drive" : "Add credentials in .env"}</button>
+        <p>Copy the OneDrive <code>Puz_shorts</code> folders (<code>alien_finals</code>, <code>blur_finals</code>, <code>jig_finals</code>) into a Google Drive folder. Share that folder with the service account email (Viewer, uncheck Notify). Set <code>GDRIVE_FOLDER_ID</code> and paste the JSON key into <code>GDRIVE_SERVICE_ACCOUNT_JSON</code> (Railway) or <code>GDRIVE_SERVICE_ACCOUNT_FILE</code> locally. Sync pulls each short into <code>ALIEN_01</code>, <code>BLUR_01</code>, <code>JIG_01</code> packages. The daily queue then rotates one series at a time.</p>
+        <p class="hint">${connected ? `Folder …${g.folderHint || ""}.${g.shareEmail ? ` Share with <code>${g.shareEmail}</code>.` : ""}${live || extra}` : "Not set — local episodes\\ folder is used."}</p>
+        <button class="btn btn-ghost" type="button" data-gdrive-sync ${connected && !syncing ? "" : "disabled"}>${syncing ? "Syncing…" : connected ? "Sync from Drive" : "Add credentials in .env"}</button>
       </article>`;
   }
 
@@ -732,6 +755,30 @@
     renderWinners();
     renderAddPreview();
     updateDryBadge();
+    $$("#view-settings [data-gdrive-sync]").forEach((btn) => {
+      const syncing = !!state.gdrive?.syncing;
+      btn.disabled = state.useApi && (!state.gdrive?.configured || syncing);
+      btn.textContent = syncing ? "Syncing…" : "Sync from Drive";
+    });
+  }
+
+  function watchDriveSync() {
+    if (state.driveWatch) return;
+    state.driveWatch = setInterval(() => {
+      loadBootstrap()
+        .then((data) => {
+          applyBootstrap(data);
+          renderAll();
+          if (!state.gdrive?.syncing) stopDriveWatch();
+        })
+        .catch(() => {});
+    }, 2000);
+  }
+
+  function stopDriveWatch() {
+    if (!state.driveWatch) return;
+    clearInterval(state.driveWatch);
+    state.driveWatch = null;
   }
 
   document.addEventListener("click", (e) => {
@@ -792,17 +839,22 @@
         toast("Drive not configured", "Set GDRIVE_FOLDER_ID and the service account file in .env.");
         return;
       }
-      driveSync.disabled = true;
+      state.gdrive = { ...(state.gdrive || {}), syncing: true };
+      renderAll();
+      watchDriveSync();
+      toast("Drive sync started", "Each video shows up in the library as soon as that file finishes.");
       api("/gdrive/sync", { method: "POST" })
         .then((result) => {
           const g = result.gdrive || {};
+          if (g.skipped && /already running/i.test(g.reason || "")) return;
           const msg = g.summary || g.reason || g.error || `Scanned ${result.scanned?.length || 0} episode(s).`;
           toast(g.ok === false ? "Drive sync failed" : "Drive synced", msg);
-          return refresh();
         })
         .catch((err) => toast("Drive sync failed", err.message))
         .finally(() => {
-          driveSync.disabled = false;
+          refresh().finally(() => {
+            if (!state.gdrive?.syncing) stopDriveWatch();
+          });
         });
       return;
     }
@@ -1040,8 +1092,20 @@
       applyBootstrap(data);
       fillSettings();
       renderAll();
+      if (data.gdrive?.syncing) watchDriveSync();
     })
     .catch(() => {
       state.useApi = false;
     });
+
+  setTimeout(() => {
+    if (state.driveWatch || !state.useApi) return;
+    loadBootstrap()
+      .then((data) => {
+        applyBootstrap(data);
+        renderAll();
+        if (data.gdrive?.syncing) watchDriveSync();
+      })
+      .catch(() => {});
+  }, 2500);
 })();

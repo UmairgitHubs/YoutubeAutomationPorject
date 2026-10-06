@@ -55,7 +55,8 @@ MISS_MESSAGES = [
 
 def seed_channel_puzzles(db: Session, episodes_dir: Path | None = None) -> int:
     """Add or refresh one channel puzzle per JIG/ALIEN/BLUR video. Aligns answers to the on-video cycle."""
-    root = Path(episodes_dir or PROJECT_ROOT / "episodes")
+    cfg = get_settings()
+    root = Path(episodes_dir or cfg.episodes_dir or PROJECT_ROOT / "episodes")
     added = 0
     updated = 0
     if not root.is_dir():
@@ -65,7 +66,6 @@ def seed_channel_puzzles(db: Session, episodes_dir: Path | None = None) -> int:
         for row in db.scalars(select(Puzzle).where(Puzzle.episode_id.is_not(None)))
         if row.episode_id
     }
-    cfg = get_settings()
     for folder in sorted(root.iterdir(), key=lambda path: path.name):
         if not folder.is_dir():
             continue

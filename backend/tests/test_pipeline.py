@@ -358,6 +358,23 @@ def test_scan_removes_episodes_missing_from_disk(tmp_path):
     assert list(db.scalars(select(PublishEvent).where(PublishEvent.episode_id == "GONE_01"))) == []
 
 
+def test_register_downloaded_package_keeps_other_episodes(tmp_path):
+    from app.services.library import register_downloaded_package
+
+    db = _session()
+    _episode(db, "KEEP_01")
+    folder = tmp_path / "JIG_03"
+    folder.mkdir()
+    (folder / "jig.mp4").write_bytes(b"v")
+    (folder / "metadata.json").write_text(
+        json.dumps({"id": "JIG_03", "title": "Jig 03", "filename": "jig.mp4"}),
+        encoding="utf-8",
+    )
+    assert register_downloaded_package(db, folder) == "JIG_03"
+    assert db.get(Episode, "KEEP_01") is not None
+    assert db.get(Episode, "JIG_03").title == "Jig 03"
+
+
 def test_queue_rotates_one_from_each_series():
     db = _session()
     for ep_id, order in [
