@@ -9,7 +9,7 @@ from pathlib import Path
 
 from app.config import Settings
 from app.models import AppSetting
-from app.services.series import SERIES_PREFIX, episode_number, series_from_folder
+from app.services.series import SERIES_PREFIX, episode_number, series_from_folder, series_of
 
 log = logging.getLogger("puzmania.gdrive")
 
@@ -187,12 +187,34 @@ def _iter_packages(service, folder_id: str):
     if series_dirs:
         yield from _packages_from_series_dirs(service, series_dirs)
         return
-    for item in children:
-        name = item.get("name") or ""
-        if item.get("mimeType") != FOLDER_MIME or not PACKAGE_NAME.match(name):
-            continue
+    packages = _episode_package_folders(children)
+    if not packages:
+        for wrapper in children:
+            if wrapper.get("mimeType") != FOLDER_MIME:
+                continue
+            inner = _list_children(service, wrapper["id"])
+            inner_series = _collect_series_dirs(service, inner)
+            if inner_series:
+                yield from _packages_from_series_dirs(service, inner_series)
+                return
+            packages = _episode_package_folders(inner)
+            if packages:
+                break
+    for item in packages:
         files = [row for row in _list_children(service, item["id"]) if _wanted_file(row)]
-        yield {"name": name, "files": files}
+        yield {"name": item["name"], "files": files}
+
+
+def _episode_package_folders(children: list[dict]) -> list[dict]:
+    """Folders like ALIEN_01 / JIG_07 — not a wrapper named episodes."""
+    found: list[dict] = []
+    for item in children:
+        if item.get("mimeType") != FOLDER_MIME:
+            continue
+        name = item.get("name") or ""
+        if series_of(name):
+            found.append(item)
+    return found
 
 
 def _collect_series_dirs(service, children: list[dict]) -> list[tuple[str, dict]]:

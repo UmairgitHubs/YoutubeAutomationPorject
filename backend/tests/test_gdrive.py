@@ -96,3 +96,35 @@ def test_iter_packages_from_puz_shorts_folders(monkeypatch):
     packages = list(gdrive._iter_packages(object(), "root"))
     assert [row["name"] for row in packages] == ["ALIEN_01", "BLUR_02", "JIG_01"]
     assert all(row.get("write_meta") for row in packages)
+
+
+def test_iter_packages_inside_episodes_wrapper(monkeypatch):
+    children = {
+        "puzmania": [{"id": "eps", "name": "episodes", "mimeType": gdrive.FOLDER_MIME}],
+        "eps": [
+            {
+                "id": "a1",
+                "name": "ALIEN_01",
+                "mimeType": gdrive.FOLDER_MIME,
+            },
+            {
+                "id": "j1",
+                "name": "JIG_01",
+                "mimeType": gdrive.FOLDER_MIME,
+            },
+        ],
+        "a1": [{"id": "av", "name": "alien_monkeys_01.mp4", "mimeType": "video/mp4", "size": "4"}],
+        "j1": [
+            {"id": "jv", "name": "jig_01.mp4", "mimeType": "video/mp4", "size": "4"},
+            {"id": "jm", "name": "metadata.json", "mimeType": "application/json", "size": "2"},
+        ],
+    }
+
+    def fake_list(_service, folder_id):
+        return children.get(folder_id, [])
+
+    monkeypatch.setattr(gdrive, "_list_children", fake_list)
+    packages = list(gdrive._iter_packages(object(), "puzmania"))
+    assert {row["name"] for row in packages} == {"ALIEN_01", "JIG_01"}
+    alien = next(row for row in packages if row["name"] == "ALIEN_01")
+    assert alien["files"][0]["name"] == "alien_monkeys_01.mp4"
