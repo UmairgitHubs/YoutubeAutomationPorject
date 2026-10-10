@@ -128,6 +128,7 @@ p {
   font-family: var(--serif);
   font-size: 1.45rem;
   font-style: italic;
+  text-decoration: none;
 }
 
 .brand-name {

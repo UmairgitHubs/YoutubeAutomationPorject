@@ -4,50 +4,151 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Puzmania — Join the competition</title>
-    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect fill='%230e0d0b' width='32' height='32'/%3E%3Ctext x='7' y='23' font-family='Georgia' font-size='16' fill='%23d4a056'%3EP%3C/text%3E%3C/svg%3E" />
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle fill='%236D28D9' cx='16' cy='16' r='16'/%3E%3Ctext x='9' y='22' font-family='Arial' font-size='16' font-weight='700' fill='%23FFE14A'%3EP%3C/text%3E%3C/svg%3E" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="/join/css/join.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Nunito:wght@600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/join/css/join.css?v=6" />
   </head>
   <body>
+    <div class="sky" aria-hidden="true">
+      <span class="sun"></span>
+      <span class="cloud cloud-a"></span>
+      <span class="cloud cloud-b"></span>
+      <span class="hill"></span>
+    </div>
+
     <header class="top">
-      <a class="brand" href="/join">Puzmania</a>
+      <a class="brand" href="/join">
+        <span class="brand-bubble" aria-hidden="true">
+          <img src="/resimler_aa/aa_30.png" alt="" width="48" height="48" />
+        </span>
+        Puzmania
+      </a>
       <nav>
         <a href="#auth-card">Join</a>
         <a href="#channel">Channel</a>
         <a href="#play">Daily riddles</a>
         <a href="#winners">Winners</a>
       </nav>
+      <a class="home-link" href="/">Club home</a>
     </header>
+
+    <div class="parade" aria-hidden="true">
+      <div class="parade-track">
+        <img src="/resimler_aa/aa_06a.png" alt="" />
+        <img src="/resimler_aa/aa_07.png" alt="" />
+        <img src="/resimler_aa/aa_08.png" alt="" />
+        <img src="/resimler_aa/aa_12.png" alt="" />
+        <img src="/resimler_aa/aa_16.png" alt="" />
+        <img src="/resimler_aa/aa_20a.png" alt="" />
+        <img src="/resimler_aa/aa_30.png" alt="" />
+        <img src="/resimler_aa/aa_40.png" alt="" />
+        <img src="/resimler_aa/aa_06a.png" alt="" />
+        <img src="/resimler_aa/aa_07.png" alt="" />
+        <img src="/resimler_aa/aa_08.png" alt="" />
+        <img src="/resimler_aa/aa_12.png" alt="" />
+        <img src="/resimler_aa/aa_16.png" alt="" />
+        <img src="/resimler_aa/aa_20a.png" alt="" />
+        <img src="/resimler_aa/aa_30.png" alt="" />
+        <img src="/resimler_aa/aa_40.png" alt="" />
+      </div>
+    </div>
+
     <main>
-      <section class="hero">
+      <section class="ribbon">
         <p class="kicker">Weekly competition</p>
         <h1>Tap a Short. Join. See your name on the videos.</h1>
-        <p class="lede">A Short each day on YouTube and Instagram. Tap it to land on this channel — hundreds of puzzle videos to solve. Join with a username and age. The first time you tap a Short and land here, we catch you as a player.</p>
-        <p class="geo" id="from-short" hidden>You came from a PUZMANIA Short — join to keep your points.</p>
-        <p class="geo" id="geo-line" hidden></p>
       </section>
 
-      <article class="card auth-top" id="auth-card">
-        <div class="tabs">
-          <button type="button" class="is-on" data-auth="join">Join</button>
-          <button type="button" data-auth="login">Log in</button>
+      <section class="playmat">
+        <div class="portraits" aria-hidden="true">
+          <figure class="portrait portrait-main">
+            <img src="/resimler_aa/aa_40.png" alt="" width="900" height="700" />
+          </figure>
+          <figure class="portrait portrait-side">
+            <img src="/resimler_aa/aa_03a.png" alt="" width="500" height="400" />
+          </figure>
+          <figure class="portrait portrait-low">
+            <img src="/resimler_aa/aa_30.png" alt="" width="500" height="400" />
+          </figure>
         </div>
-        <form id="join-form">
-          <label>Username <input name="username" autocomplete="username" required minlength="3" maxlength="20" /></label>
-          <label>Age <input name="age" type="number" min="13" max="120" required /></label>
-          <label>Password <input name="password" type="password" autocomplete="new-password" required minlength="4" /></label>
-          <p class="hint">We only store username, age, and the country/region of this visit. No name, surname, or address. Members must be 13 or older — a parent can create the account. Tapping a Short and joining is how you earn winner points.</p>
-          <button class="go" type="submit">Become a member</button>
-        </form>
-        <form id="login-form" hidden>
-          <label>Username <input name="username" autocomplete="username" required /></label>
-          <label>Password <input name="password" type="password" autocomplete="current-password" required /></label>
-          <button class="go" type="submit">Log in</button>
-        </form>
-        <p class="err" id="auth-err" hidden></p>
-      </article>
+
+        <div class="playmat-copy">
+          <section class="hero">
+            <p class="lede">A Short each day on YouTube and Instagram. Tap it to land on this channel — hundreds of puzzle videos to solve. Join with a username and age. The first time you tap a Short and land here, we catch you as a player.</p>
+            <p class="geo" id="from-short" hidden>You came from a PUZMANIA Short — join to keep your points.</p>
+            <p class="geo" id="geo-line" hidden></p>
+          </section>
+
+          <article class="card auth-top" id="auth-card">
+            <p class="ticket-label">Player pass</p>
+            <div class="tabs">
+              <button type="button" class="is-on" data-auth="join">Join</button>
+              <button type="button" data-auth="login">Log in</button>
+            </div>
+            <form id="join-form">
+              <label>Username <input name="username" autocomplete="username" required minlength="3" maxlength="20" /></label>
+              <label>Age <input name="age" type="number" min="13" max="120" required /></label>
+              <label>Password <input name="password" type="password" autocomplete="new-password" required minlength="4" /></label>
+              <p class="hint">We only store username, age, and the country/region of this visit. No name, surname, or address. Members must be 13 or older — a parent can create the account. Tapping a Short and joining is how you earn winner points.</p>
+              <button class="go" type="submit">Become a member</button>
+            </form>
+            <form id="login-form" hidden>
+              <label>Username <input name="username" autocomplete="username" required /></label>
+              <label>Password <input name="password" type="password" autocomplete="current-password" required /></label>
+              <button class="go" type="submit">Log in</button>
+            </form>
+            <p class="err" id="auth-err" hidden></p>
+          </article>
+        </div>
+      </section>
+
+      <section class="faces" aria-label="Pals in the club">
+        <figure>
+          <img src="/resimler_aa/aa_05a.png" alt="A cartoon fish playing guitar beside a duck" width="700" height="500" />
+          <figcaption>Lake songs</figcaption>
+        </figure>
+        <figure>
+          <img src="/resimler_aa/aa_06a.png" alt="An elephant and a rhino playing on stage" width="700" height="500" />
+          <figcaption>Band night</figcaption>
+        </figure>
+        <figure>
+          <img src="/resimler_aa/aa_08.png" alt="A cartoon cat singing with a guitar" width="700" height="500" />
+          <figcaption>Big grins</figcaption>
+        </figure>
+        <figure>
+          <img src="/resimler_aa/aa_16.png" alt="A cartoon bird skiing" width="700" height="500" />
+          <figcaption>Snow zoom</figcaption>
+        </figure>
+        <figure>
+          <img src="/resimler_aa/aa_45.png" alt="Cartoon animals sharing a paper in a barn" width="700" height="500" />
+          <figcaption>Barn pals</figcaption>
+        </figure>
+      </section>
+
+      <section class="toybox" data-playpad aria-labelledby="toy-title">
+        <p class="kicker">Play corner</p>
+        <h2 id="toy-title">Tap a pal before the next riddle</h2>
+        <div class="pals">
+          <button type="button" class="pal" data-say="I spotted the answer in the paper!" aria-label="Reader">
+            <img src="/resimler_aa/aa_01.png" alt="" width="280" height="180" />
+          </button>
+          <button type="button" class="pal" data-say="Faster taps score more points." aria-label="Speedy">
+            <img src="/resimler_aa/aa_16.png" alt="" width="280" height="180" />
+          </button>
+          <button type="button" class="pal" data-say="The winner spotlight is this way." aria-label="Circus dog">
+            <img src="/resimler_aa/aa_20a.png" alt="" width="280" height="180" />
+          </button>
+          <button type="button" class="pal" data-say="Come play. The fair is open." aria-label="Fair bee">
+            <img src="/resimler_aa/aa_40.png" alt="" width="280" height="180" />
+          </button>
+        </div>
+        <p class="pal-say" data-pal-say>Tap a friend. They bounce.</p>
+        <div class="pitch">
+          <button type="button" class="ball" data-ball aria-label="Kick the ball"></button>
+        </div>
+      </section>
 
       <section class="card channel" id="channel">
         <h2>The PUZMANIA channel</h2>
@@ -79,12 +180,41 @@
         <p class="ok" id="play-ok" hidden></p>
       </section>
 
-      <section class="card winners" id="winners">
-        <h2>This week’s winner</h2>
-        <p id="today-winner">No winner yet today.</p>
-        <ol id="winners-list"></ol>
+      <section class="winner-band">
+        <img
+          src="/resimler_aa/aa_20a.png"
+          alt="A cartoon dog in a bright circus ring"
+          width="1400"
+          height="800"
+        />
+        <section class="card winners" id="winners">
+          <h2>This week’s winner</h2>
+          <p id="today-winner">No winner yet today.</p>
+          <ol id="winners-list"></ol>
+        </section>
       </section>
     </main>
-    <script src="/join/js/join.js"></script>
+    <script src="/join/js/join.js?v=6"></script>
+    <script>
+      document.querySelectorAll("[data-playpad]").forEach((box) => {
+        const say = box.querySelector("[data-pal-say]");
+        box.addEventListener("click", (event) => {
+          const pal = event.target.closest("[data-say]");
+          if (pal) {
+            pal.classList.remove("is-pop");
+            void pal.offsetWidth;
+            pal.classList.add("is-pop");
+            if (say) say.textContent = pal.dataset.say;
+          }
+          const ball = event.target.closest("[data-ball]");
+          if (ball) {
+            ball.classList.remove("is-kick");
+            void ball.offsetWidth;
+            ball.classList.add("is-kick");
+            if (say) say.textContent = "Goal! Nice kick.";
+          }
+        });
+      });
+    </script>
   </body>
 </html>

@@ -135,6 +135,10 @@
     });
   });
 
+  if (params.get("tab") === "login") {
+    document.querySelector('[data-auth="login"]')?.click();
+  }
+
   $("#join-form").addEventListener("submit", async (e) => {
     e.preventDefault();
     showErr("#auth-err");
@@ -197,9 +201,27 @@
     paintCatalog(on);
   }
 
+  const CLIP_ART = [
+    "aa_01.png", "aa_02.png", "aa_03a.png", "aa_05a.png", "aa_06a.png", "aa_07.png", "aa_08.png",
+    "aa_09.png", "aa_10.png", "aa_11a.png", "aa_12.png", "aa_13.png", "aa_14.png", "aa_16.png",
+    "aa_17.png", "aa_18.png", "aa_19.png", "aa_20a.png", "aa_21.png", "aa_22.png", "aa_23.png",
+    "aa_24.png", "aa_25.png", "aa_26.png", "aa_27.png", "aa_28a.png", "aa_29.png", "aa_30.png",
+    "aa_31.png", "aa_32.png", "aa_33.png", "aa_34.png", "aa_35.png", "aa_36.png", "aa_37a.png",
+    "aa_38a.png", "aa_39.png", "aa_40.png", "aa_41.png", "aa_42.png", "aa_43.png", "aa_44.png",
+    "aa_45.png", "aa_46.png", "aa_47.png", "aa_48.png", "aa_49.png", "aa_50.png", "aa_51a.png",
+    "aa_52.png", "aa_53.png", "aa_54.png", "aa_55.png", "aa_56.png", "aa_57.png", "aa_58b.png",
+  ];
+
+  function clipArt(puzzle) {
+    const num = Number(String(puzzle.episodeId || "").replace(/\D/g, "")) || Number(puzzle.id) || 1;
+    const shift = puzzle.series === "JIG" ? 19 : puzzle.series === "BLUR" ? 37 : 0;
+    return CLIP_ART[(Math.max(num, 1) - 1 + shift) % CLIP_ART.length];
+  }
+
   function paintCatalog(series) {
     const list = $("#channel-list");
     const labels = { JIG: "Jigsaw", ALIEN: "Alien Monkeys", BLUR: "Blur" };
+    const themes = { JIG: "is-jig", ALIEN: "is-alien", BLUR: "is-blur" };
     const rows = state.channel.filter((p) => series === "ALL" || p.series === series);
     if (!rows.length) {
       list.innerHTML = `<p class="hint">The video library is still loading. Come back in a moment.</p>`;
@@ -209,9 +231,15 @@
       .map((p) => {
         const mark = p.solved ? (p.correct ? "Solved" : "Tried") : "Play";
         const seriesName = labels[p.series] || p.series || "Puzzle";
-        return `<button type="button" class="clip ${p.solved ? "is-done" : ""}" data-id="${p.id}" data-ep="${p.episodeId || ""}">
-          <strong>${p.title || p.episodeId}</strong>
-          <span>${seriesName} · ${mark}${p.pointsAwarded ? ` · +${p.pointsAwarded}` : ""}</span>
+        const theme = themes[p.series] || "is-jig";
+        const art = clipArt(p);
+        return `<button type="button" class="clip ${theme} ${p.solved ? "is-done" : ""}" data-id="${p.id}" data-ep="${p.episodeId || ""}">
+          <img class="clip-art" src="/resimler_aa/${art}" alt="" />
+          <span class="clip-play" aria-hidden="true">${mark}</span>
+          <span class="clip-copy">
+            <strong>${p.title || p.episodeId}</strong>
+            <span class="clip-meta">${seriesName} · ${mark}${p.pointsAwarded ? ` · +${p.pointsAwarded}` : ""}</span>
+          </span>
         </button>`;
       })
       .join("");

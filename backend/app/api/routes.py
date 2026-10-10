@@ -23,6 +23,7 @@ from app.services import library, orchestrator, publish_jobs, queue as queue_ser
 from app.services import gdrive, tiktok_oauth, youtube_oauth
 from app.services import winners as winner_service
 from app.services.scheduler import reschedule
+from app.services.studio_auth import require_studio
 from app.services.serialize import (
     episode_out,
     history_out,
@@ -33,7 +34,7 @@ from app.services.serialize import (
     settings_out,
 )
 
-router = APIRouter(prefix="/api")
+router = APIRouter(prefix="/api", dependencies=[Depends(require_studio)])
 
 PLATFORM_META = {
     "youtube": {

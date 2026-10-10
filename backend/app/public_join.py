@@ -70,3 +70,7 @@ if join_dir.is_dir():
 
     app.mount("/join/css", StaticFiles(directory=str(join_dir / "css")), name="join-css")
     app.mount("/join/js", StaticFiles(directory=str(join_dir / "js")), name="join-js")
+
+pics = frontend / "resimler_aa"
+if pics.is_dir():
+    app.mount("/resimler_aa", StaticFiles(directory=str(pics)), name="resimler")
