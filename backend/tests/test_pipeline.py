@@ -125,6 +125,32 @@ def test_tiktok_pkce_challenge_is_hex_sha256():
     assert len(challenge) == 64
 
 
+def test_oauth_success_returns_to_the_desk():
+    from app.api.routes import _oauth_page
+
+    html = _oauth_page("YouTube connected", "The channel login is saved.", success=True)
+    assert 'location.href = "/desk#platforms"' in html
+    assert 'href="/desk#platforms"' in html
+    assert "/#platforms" not in html
+
+
+def test_youtube_upload_uses_token_saved_after_startup(monkeypatch):
+    from app.publishers.youtube import YouTubePublisher, latest_refresh_token
+
+    monkeypatch.setenv("YOUTUBE_REFRESH_TOKEN", "reconnected-token")
+    stale = Settings(
+        youtube_client_id="client",
+        youtube_client_secret="secret",
+        youtube_refresh_token="expired-token",
+    )
+    assert latest_refresh_token(stale) == "reconnected-token"
+    assert YouTubePublisher().is_configured(stale) is True
+
+    monkeypatch.setenv("YOUTUBE_REFRESH_TOKEN", "")
+    assert latest_refresh_token(stale) == ""
+    assert YouTubePublisher().is_configured(stale) is False
+
+
 def test_youtube_invalid_grant_asks_to_reconnect():
     from app.publishers.youtube import RECONNECT_MSG, _friendly_youtube_error
 

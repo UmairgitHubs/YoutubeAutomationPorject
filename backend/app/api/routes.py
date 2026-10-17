@@ -23,7 +23,7 @@ from app.services import library, orchestrator, publish_jobs, queue as queue_ser
 from app.services import gdrive, tiktok_oauth, youtube_oauth
 from app.services import winners as winner_service
 from app.services.scheduler import reschedule
-from app.services.studio_auth import require_studio
+from app.services.studio_auth import COOKIE_NAME, attach_session, require_studio, session_ok
 from app.services.serialize import (
     episode_out,
     history_out,
@@ -413,25 +413,32 @@ def youtube_auth_start(request: Request, cfg: Settings = Depends(get_settings)):
             status_code=302,
         )
     except ValueError as exc:
-        return HTMLResponse(_oauth_page("YouTube is not ready", str(exc), retry="/api/auth/youtube/start"), status_code=400)
+        return _oauth_response(request, "YouTube is not ready", str(exc), retry="/api/auth/youtube/start")
 
 
 @router.get("/auth/youtube/callback")
 def youtube_auth_callback(
+    request: Request,
     code: str | None = None,
     state: str | None = None,
     error: str | None = None,
     cfg: Settings = Depends(get_settings),
 ):
     if error:
-        return HTMLResponse(_oauth_page("YouTube authorization cancelled", error, retry="/api/auth/youtube/start"), status_code=400)
+        return _oauth_response(request, "YouTube authorization cancelled", error, retry="/api/auth/youtube/start")
     if not code:
         raise HTTPException(400, "Missing authorization code")
     try:
         youtube_oauth.exchange_code(cfg, code, state)
     except Exception as exc:
-        return HTMLResponse(_oauth_page("YouTube connection failed", str(exc), retry="/api/auth/youtube/start"), status_code=400)
-    return HTMLResponse(_oauth_page("YouTube connected", "Refresh token saved. You can close this tab and return to Puzmania.", success=True))
+        return _oauth_response(request, "YouTube connection failed", str(exc), retry="/api/auth/youtube/start")
+    reschedule(get_settings())
+    return _oauth_response(
+        request,
+        "YouTube connected",
+        "The channel login is saved. Returning to the desk.",
+        success=True,
+    )
 
 
 @router.post("/auth/youtube/disconnect")
@@ -441,15 +448,16 @@ def youtube_auth_disconnect() -> dict:
 
 
 @router.get("/auth/tiktok/start")
-def tiktok_auth_start(cfg: Settings = Depends(get_settings)):
+def tiktok_auth_start(request: Request, cfg: Settings = Depends(get_settings)):
     try:
         return RedirectResponse(tiktok_oauth.authorization_url(cfg), status_code=302)
     except ValueError as exc:
-        return HTMLResponse(_oauth_page("TikTok is not ready", str(exc), retry="/api/auth/tiktok/start"), status_code=400)
+        return _oauth_response(request, "TikTok is not ready", str(exc), retry="/api/auth/tiktok/start")
 
 
 @router.get("/auth/tiktok/callback")
 def tiktok_auth_callback(
+    request: Request,
     code: str | None = None,
     state: str | None = None,
     error: str | None = None,
@@ -458,21 +466,21 @@ def tiktok_auth_callback(
 ):
     if error:
         detail = error_description or error
-        return HTMLResponse(_oauth_page("TikTok authorization cancelled", detail, retry="/api/auth/tiktok/start"), status_code=400)
+        return _oauth_response(request, "TikTok authorization cancelled", detail, retry="/api/auth/tiktok/start")
     if not code:
         raise HTTPException(400, "Missing authorization code")
     try:
         tokens = tiktok_oauth.exchange_code(cfg, code, state)
         name = tiktok_oauth.display_name(tokens["access_token"])
     except Exception as exc:
-        return HTMLResponse(_oauth_page("TikTok connection failed", str(exc), retry="/api/auth/tiktok/start"), status_code=400)
+        return _oauth_response(request, "TikTok connection failed", str(exc), retry="/api/auth/tiktok/start")
     who = f" Connected as {name}." if name else ""
-    return HTMLResponse(
-        _oauth_page(
-            "TikTok connected",
-            f"Tokens saved.{who} You can close this tab and return to Puzmania.",
-            success=True,
-        )
+    reschedule(get_settings())
+    return _oauth_response(
+        request,
+        "TikTok connected",
+        f"Tokens saved.{who} Returning to the desk.",
+        success=True,
     )
 
 
@@ -482,8 +490,27 @@ def tiktok_auth_disconnect(cfg: Settings = Depends(get_settings)) -> dict:
     return {"connected": False}
 
 
-def _oauth_page(title: str, detail: str, success: bool = False, retry: str = "/#platforms") -> str:
-    dest = "/#platforms"
+DESK_PLATFORMS = "/desk#platforms"
+
+
+def _oauth_response(
+    request: Request,
+    title: str,
+    detail: str,
+    success: bool = False,
+    retry: str = DESK_PLATFORMS,
+) -> HTMLResponse:
+    page = HTMLResponse(
+        _oauth_page(title, detail, success=success, retry=retry),
+        status_code=200 if success else 400,
+    )
+    if session_ok(request.cookies.get(COOKIE_NAME)):
+        attach_session(page)
+    return page
+
+
+def _oauth_page(title: str, detail: str, success: bool = False, retry: str = DESK_PLATFORMS) -> str:
+    dest = DESK_PLATFORMS
     action = (
         f'<a href="{dest}">Back to Platforms</a>'
         if success

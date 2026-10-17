@@ -6,6 +6,7 @@ import hmac
 from datetime import UTC, datetime, timedelta
 
 from fastapi import HTTPException, Request
+from starlette.responses import Response
 
 STUDIO_USERNAME = "studio"
 STUDIO_PASSWORD = "puzmania"
@@ -26,6 +27,17 @@ def make_token() -> str:
     stamp = str(int(datetime.now(UTC).timestamp()))
     sig = hmac.new(_SECRET, f"studio.{stamp}".encode("ascii"), hashlib.sha256).hexdigest()
     return f"{stamp}.{sig}"
+
+
+def attach_session(response: Response) -> None:
+    response.set_cookie(
+        COOKIE_NAME,
+        make_token(),
+        httponly=True,
+        samesite="lax",
+        path="/",
+        max_age=int(_MAX_AGE.total_seconds()),
+    )
 
 
 def session_ok(token: str | None) -> bool:

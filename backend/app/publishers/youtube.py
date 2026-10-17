@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import os
 
 from app.config import Settings
 from app.models import Episode
@@ -15,11 +16,18 @@ RECONNECT_MSG = (
 )
 
 
+def latest_refresh_token(settings: Settings) -> str:
+    """Token saved by Reconnect, including one written after this process started."""
+    if "YOUTUBE_REFRESH_TOKEN" in os.environ:
+        return os.environ["YOUTUBE_REFRESH_TOKEN"]
+    return settings.youtube_refresh_token or ""
+
+
 class YouTubePublisher(Publisher):
     name = "youtube"
 
     def is_configured(self, settings: Settings) -> bool:
-        return settings.youtube_connected()
+        return bool(settings.youtube_client_id and settings.youtube_client_secret and latest_refresh_token(settings))
 
     def publish(
         self,
@@ -48,9 +56,12 @@ class YouTubePublisher(Publisher):
 
         title = (getattr(episode, "youtube_title", None) or episode.title or "")[:100]
         description = getattr(episode, "youtube_description", None) or episode.description or title
+        refresh_token = latest_refresh_token(settings)
+        if not refresh_token:
+            return PublishResult(success=False, error="YouTube OAuth is not configured (client id, secret, refresh token).")
         creds = Credentials(
             token=None,
-            refresh_token=settings.youtube_refresh_token,
+            refresh_token=refresh_token,
             token_uri="https://oauth2.googleapis.com/token",
             client_id=settings.youtube_client_id,
             client_secret=settings.youtube_client_secret,
@@ -64,7 +75,7 @@ class YouTubePublisher(Publisher):
 
             emit_progress(on_progress, "youtube", "Refreshing the YouTube login…", 2)
             creds.refresh(Request())
-            if creds.refresh_token and creds.refresh_token != settings.youtube_refresh_token:
+            if creds.refresh_token and creds.refresh_token != refresh_token:
                 upsert_env("YOUTUBE_REFRESH_TOKEN", creds.refresh_token)
             youtube = build("youtube", "v3", credentials=creds, cache_discovery=False)
             body = {
