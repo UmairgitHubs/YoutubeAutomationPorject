@@ -150,19 +150,61 @@ def test_seed_puzzles_still_runs_when_channel_exists(tmp_path):
     assert all(row.episode_id is None for row in join_service.todays_puzzles(db, date(2026, 9, 10)))
 
 
-def test_answer_cycle_follows_video_labels():
-    jig = Settings(answer_cycle_jig="ABCD", answer_offset_jig=0)
+def test_letter_counts_match_the_three_categories():
+    jig = Settings(answer_offset_jig=0)
+    assert channel_service._spec_for("JIG_01", jig)["choices"] == ["A", "B", "C"]
     assert channel_service._spec_for("JIG_01", jig)["answer"] == "A"
-    assert channel_service._spec_for("JIG_02", jig)["answer"] == "B"
-    assert channel_service._spec_for("JIG_04", jig)["answer"] == "D"
-    assert channel_service._spec_for("JIG_05", jig)["answer"] == "A"
-    assert channel_service._spec_for("JIG_01", jig)["choices"] == ["A", "B", "C", "D"]
-    shifted = Settings(answer_cycle_jig="ABCD", answer_offset_jig=2)
-    assert channel_service._spec_for("JIG_01", shifted)["answer"] == "C"
-    alien = Settings(answer_cycle_alien="123", answer_offset_alien=0)
-    assert channel_service._spec_for("ALIEN_01", alien)["answer"] == "1"
-    assert channel_service._spec_for("ALIEN_03", alien)["answer"] == "3"
-    assert channel_service._spec_for("ALIEN_04", alien)["answer"] == "1"
+    assert channel_service._spec_for("JIG_03", jig)["answer"] == "C"
+    assert channel_service._spec_for("JIG_04", jig)["answer"] == "A"
+    shifted = Settings(answer_offset_jig=1)
+    assert channel_service._spec_for("JIG_01", shifted)["answer"] == "B"
+    alien = Settings(answer_offset_alien=0)
+    assert channel_service._spec_for("ALIEN_01", alien)["choices"] == ["A", "B", "C", "D"]
+    assert channel_service._spec_for("ALIEN_04", alien)["answer"] == "D"
+    assert channel_service._spec_for("ALIEN_05", alien)["answer"] == "A"
+    blur = channel_service._spec_for("BLUR_02", Settings(answer_offset_blur=0))
+    assert blur["choices"] == ["A", "B", "C"]
+    assert blur["answer"] == "B"
+
+
+def test_board_keeps_one_fresh_puzzle_from_each_series():
+    db = _session()
+    member = _kid(db)
+    specs = [
+        ("ALIEN_02", "ALIEN"),
+        ("ALIEN_01", "ALIEN"),
+        ("BLUR_04", "BLUR"),
+        ("JIG_09", "JIG"),
+        ("JIG_02", "JIG"),
+    ]
+    for episode_id, series in specs:
+        spec = channel_service._spec_for(episode_id)
+        db.add(
+            Puzzle(
+                prompt=spec["prompt"],
+                answer=spec["answer"],
+                choices=__import__("json").dumps(spec["choices"]),
+                active=True,
+                episode_id=episode_id,
+                series=series,
+            )
+        )
+    db.flush()
+    board = channel_service.board_for(db, member)
+    assert [slot["series"] for slot in board] == ["ALIEN", "BLUR", "JIG"]
+    assert [slot["title"] for slot in board] == ["Alien Monkey", "Blur", "Jig"]
+    assert board[0]["puzzle"]["episodeId"] == "ALIEN_01"
+    assert board[0]["puzzle"]["letters"] == ["A", "B", "C", "D"]
+    assert board[1]["puzzle"]["letters"] == ["A", "B", "C"]
+    assert board[2]["puzzle"]["episodeId"] == "JIG_02"
+    assert board[2]["puzzle"]["letters"] == ["A", "B", "C"]
+    channel_service.submit_answer(db, member, board[0]["puzzle"]["id"], "Z")
+    again = channel_service.board_for(db, member)
+    assert again[0]["puzzle"]["episodeId"] == "ALIEN_02"
+    assert again[1]["puzzle"]["episodeId"] == "BLUR_04"
+    channel_service.submit_answer(db, member, again[1]["puzzle"]["id"], "A")
+    finished = channel_service.board_for(db, member)
+    assert finished[1]["puzzle"] is None
 
 
 def test_detect_offset_when_first_clip_is_not_a():
@@ -230,3 +272,17 @@ def test_channel_http_flow_one_try_and_score():
     prompts = [item["prompt"] for item in daily.json()["puzzles"]]
     assert len(prompts) == 3
     assert all("Jig Puzzle" not in item and "Alien Monkeys" not in item for item in prompts)
+    board = client.get("/api/join/board")
+    assert board.status_code == 200
+    slots = board.json()["slots"]
+    assert [slot["series"] for slot in slots] == ["ALIEN", "BLUR", "JIG"]
+    jig = next(slot for slot in slots if slot["series"] == "JIG")
+    assert jig["puzzle"] is None or jig["puzzle"]["episodeId"] != "JIG_01"
+    alien = next(slot for slot in slots if slot["series"] == "ALIEN")
+    if alien["puzzle"]:
+        assert alien["puzzle"]["letters"] == ["A", "B", "C", "D"]
+    fresh = TestClient(app)
+    opened = fresh.get("/api/join/board")
+    assert opened.status_code == 200
+    assert opened.json()["childId"]
+    assert fresh.get("/api/join/board").json()["childId"] == opened.json()["childId"]

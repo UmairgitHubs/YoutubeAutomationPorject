@@ -270,6 +270,20 @@ def submit(
         raise HTTPException(400, str(exc)) from exc
 
 
+@router.get("/board")
+def play_board(
+    request: Request,
+    response: Response,
+    db: Session = Depends(get_db),
+    member: Member | None = Depends(optional_member),
+) -> dict:
+    token = visitor_token(request, response)
+    child = join_service.child_for_visit(db, member, token)
+    _set_session(response, child.id)
+    channel_service.seed_channel_puzzles(db)
+    return {"childId": child.id, "slots": channel_service.board_for(db, child)}
+
+
 @router.get("/channel")
 def channel_home(
     db: Session = Depends(get_db),

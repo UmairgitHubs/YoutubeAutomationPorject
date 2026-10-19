@@ -126,6 +126,42 @@ def member_id_from_token(token: str | None) -> int | None:
         return None
 
 
+def _unused_child_name(db: Session) -> str:
+    for _ in range(8):
+        name = "kid" + secrets.token_hex(3)
+        if db.scalar(select(Member.id).where(Member.username == name)) is None:
+            return name
+    return "kid" + secrets.token_hex(5)
+
+
+def child_for_visit(db: Session, member: Member | None, visitor_token: str) -> Member:
+    """The browser is the child. Tries are stored on that record, with no player login."""
+    now = datetime.now(UTC)
+    token = (visitor_token or "").strip()
+    if member is not None:
+        if token and not member.visitor_token:
+            member.visitor_token = token
+        member.last_seen_at = now
+        safe_flush(db)
+        return member
+    if token:
+        found = db.scalar(select(Member).where(Member.visitor_token == token))
+        if found is not None:
+            found.last_seen_at = now
+            safe_flush(db)
+            return found
+    created = Member(
+        username=_unused_child_name(db),
+        age=8,
+        password_hash=hash_password(secrets.token_urlsafe(18)),
+        visitor_token=token or None,
+        last_seen_at=now,
+    )
+    db.add(created)
+    safe_flush(db)
+    return created
+
+
 def register_member(
     db: Session,
     settings: Settings,

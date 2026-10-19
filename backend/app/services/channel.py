@@ -17,12 +17,16 @@ from app.services.series import (
     SERIES_PREFIX,
     answer_key,
     episode_number,
-    parse_cycle,
     series_of,
 )
 
 log = logging.getLogger("puzmania.channel")
 
+PLAY_SLOTS = (
+    ("ALIEN", "Alien Monkey"),
+    ("BLUR", "Blur"),
+    ("JIG", "Jig"),
+)
 TIMER_START = 100
 POINTS_FACTOR = 9
 MISS_MESSAGES = [
@@ -111,17 +115,21 @@ def _episode_number(episode_id: str) -> int:
     return episode_number(episode_id)
 
 
+def letters_for(series: str | None) -> list[str]:
+    """Alien Monkey has four choices. Blur and Jig have three."""
+    if (series or "").upper() == "ALIEN":
+        return ["A", "B", "C", "D"]
+    return ["A", "B", "C"]
+
+
 def _spec_for(episode_id: str, settings: Settings | None = None) -> dict:
     cfg = settings or get_settings()
     series = series_of(episode_id) or "JIG"
     number = episode_number(episode_id)
-    fallback = {"JIG": "ABCD", "ALIEN": "123", "BLUR": "ABCD"}[series]
-    cycle = parse_cycle(getattr(cfg, f"answer_cycle_{series.lower()}"), fallback)
+    cycle = letters_for(series)
     offset = int(getattr(cfg, f"answer_offset_{series.lower()}") or 0)
     answer = answer_key(series, number, cycle, offset)
-    joined = ", ".join(cycle[:-1]) + (f", or {cycle[-1]}" if len(cycle) > 1 else cycle[0])
-    prompt = f"Watch the clip. Tap the correct option from the video ({joined}). ({SERIES_PREFIX[series]} #{number:02d})"
-    return {"prompt": prompt, "answer": answer, "choices": list(cycle)}
+    return {"prompt": "What is the answer?", "answer": answer, "choices": list(cycle)}
 
 
 def video_file(episode_id: str, db: Session | None = None) -> Path | None:
@@ -188,6 +196,53 @@ def catalog(db: Session, member: Member | None) -> list[dict]:
             }
         )
     return out
+
+
+def board_for(db: Session, member: Member) -> list[dict]:
+    """One untried video from each series. A finished try never comes back."""
+    rows = list(
+        db.scalars(
+            select(Puzzle).where(Puzzle.active.is_(True), Puzzle.episode_id.is_not(None))
+        )
+    )
+    tried = {
+        puzzle_id
+        for puzzle_id in db.scalars(
+            select(PuzzleAttempt.puzzle_id).where(
+                PuzzleAttempt.member_id == member.id,
+                PuzzleAttempt.finished_at.is_not(None),
+            )
+        )
+    }
+    grouped: dict[str, list[Puzzle]] = {series: [] for series, _title in PLAY_SLOTS}
+    for row in rows:
+        series = (row.series or series_of(row.episode_id or "") or "").upper()
+        if series not in grouped or row.id in tried:
+            continue
+        grouped[series].append(row)
+    slots = []
+    for series, title in PLAY_SLOTS:
+        waiting = sorted(
+            grouped[series],
+            key=lambda row: (episode_number(row.episode_id or ""), row.episode_id or ""),
+        )
+        puzzle = waiting[0] if waiting else None
+        slots.append(
+            {
+                "series": series,
+                "title": title,
+                "puzzle": None
+                if puzzle is None
+                else {
+                    "id": puzzle.id,
+                    "episodeId": puzzle.episode_id,
+                    "question": puzzle.prompt or "What is the answer?",
+                    "letters": letters_for(series),
+                    "hasVideo": video_file(puzzle.episode_id or "", db) is not None,
+                },
+            }
+        )
+    return slots
 
 
 def start_attempt(db: Session, member: Member, puzzle_id: int) -> dict:

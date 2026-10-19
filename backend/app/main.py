@@ -103,15 +103,15 @@ if frontend.exists():
     @app.get("/desk", response_model=None)
     async def desk(request: Request) -> FileResponse | RedirectResponse:
         if not session_ok(request.cookies.get(COOKIE_NAME)):
-            return RedirectResponse("/#studio-login", status_code=302)
+            return RedirectResponse("/?admin=1", status_code=302)
         return FileResponse(frontend / "index.html")
 
     join_dir = frontend / "join"
     if join_dir.exists():
         @app.get("/join")
         @app.get("/join/")
-        async def join_home() -> FileResponse:
-            return FileResponse(join_dir / "index.html")
+        async def join_home() -> RedirectResponse:
+            return RedirectResponse("/", status_code=302)
 
         app.mount("/join/css", StaticFiles(directory=str(join_dir / "css")), name="join-css")
         app.mount("/join/js", StaticFiles(directory=str(join_dir / "js")), name="join-js")
